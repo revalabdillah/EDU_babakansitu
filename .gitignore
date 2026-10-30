@@ -1,0 +1,19 @@
+# clasp credentials (JANGAN commit — berisi token OAuth)
+.clasprc.json
+.clasp.json
+
+# Node modules (jika nanti pakai npm)
+node_modules/
+
+# Backup lokal
+backups/*.json
+!backups/.gitkeep
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# VS Code
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
