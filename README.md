@@ -57,3 +57,83 @@ Buka terminal/CMD, lalu jalankan:
 ```bash
 git clone https://github.com/revalabdillah/edumanage.git
 cd edumanage
+
+### Langkah 3: Hubungkan Code dengan Apps Script
+
+1. **Login menggunakan akun Google Anda:**
+   ```bash
+   clasp login
+   ```
+
+2. **Buka file `.clasp.json` di VS Code**, lalu ganti bagian `scriptId` dengan Script ID dari Langkah 1:
+   ```json
+   {
+     "scriptId": "MASUKKAN_SCRIPT_ID_ANDA_DI_SINI",
+     "rootDir": "."
+   }
+   ```
+
+3. **Kirim semua kode ke server Google:**
+   ```bash
+   clasp push --force
+   ```
+
+---
+
+### Langkah 4: Inisialisasi Database & Izin
+
+1. Buka editor Apps Script di browser.
+2. Pastikan file `appsscript.json` sudah memuat izin OAuth berikut:
+   ```json
+   "oauthScopes": [
+     "https://www.googleapis.com/auth/spreadsheets",
+     "https://www.googleapis.com/auth/drive",
+     "https://www.googleapis.com/auth/script.external_request",
+     "https://www.googleapis.com/auth/userinfo.email"
+   ]
+   ```
+3. Jalankan fungsi `setupDatabase()` dari dropdown fungsi di editor Apps Script, lalu klik **Run**. Izinkan pop-up izin akses (*Advanced* > *Go to project (unsafe)* > *Allow*).
+4. *(Opsional)* Jalankan fungsi `seedMasterDataForTesting()` jika Anda ingin mengunduh data *dummy* (guru/siswa/kelas) untuk keperluan uji coba.
+
+---
+
+### Langkah 5: Deploy Web App
+
+1. Di editor Apps Script, klik tombol **Deploy** di pojok kanan atas > **New deployment**.
+2. Pilih tipe **Web app** (klik ikon gerigi).
+3. Atur konfigurasi deployment sebagai berikut:
+   - **Description:** Rilis v1.0
+   - **Execute as:** Me (`email-anda@gmail.com`)
+   - **Who has access:** Anyone
+4. Klik **Deploy** dan salin URL Web App yang dihasilkan (URL berakhiran `/exec`).
+
+---
+
+### 🔐 Akses Default
+
+Buka URL Web App di browser Anda:
+- **Email/Username:** `admin` (atau email Google Anda yang terdaftar)
+- **Password:** `admin123`
+
+> 💡 *Sangat disarankan untuk segera mengganti password default melalui menu profil di pojok kanan atas setelah login pertama kali.*
+
+---
+
+### 📝 Konfigurasi Awal (Setelah Login Admin)
+
+1. **Atur Tahun Ajaran:** Masuk ke menu *Tahun Ajaran*, pastikan ada satu tahun ajaran yang berstatus **AKTIF**.
+2. **Input Master Data:** Tambahkan Data Guru, Data Siswa, dan Data Kelas.
+3. **Pemetaan Mengajar:** Buka menu *Pemetaan Mengajar*, hubungkan Guru ke Kelas dan Mata Pelajaran yang diampu.
+4. **API Key AI (Khusus Guru):**
+   - Setiap guru dapat melakukan login dengan akunnya masing-masing.
+   - Buka menu **Pengaturan AI**.
+   - Masukkan **Gemini API Key** (bisa didapatkan secara gratis melalui Google AI Studio).
+   - *Catatan:* Setiap guru disarankan menggunakan API Key-nya masing-masing agar tidak terkena pembatasan kuota (*rate limit*) server.
+
+---
+
+### 🤝 Kontribusi
+
+Proyek ini dikembangkan secara eksklusif untuk lingkungan **SDN Babakansitu**. Jika Anda ingin berkontribusi atau melaporkan masalah (*bug*), silakan buat **Issue** atau **Pull Request** pada repositori ini.
+
+
