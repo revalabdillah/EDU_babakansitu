@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><?= appConfig.APP_NAME ?> — <?= pageTitle ?></title>
+  <?!= include('ui/styles') ?>
+</head>
+<body class="bg-bg-page text-text-primary min-h-screen">
+
+  <? if (pageName !== 'login') { ?>
+
+    <!-- 👇 PASSING webAppUrl KE SIDEBAR 👇 -->
+    <?!= include('ui/layout-sidebar', {
+      appConfig: appConfig,
+      user: user,
+      token: token,
+      roleMenu: roleMenu,
+      pageName: pageName,
+      webAppUrl: webAppUrl
+    }) ?>
+
+    <div class="lg:pl-[260px] pt-16 min-h-screen">
+      <?!= include('ui/layout-topbar', {
+        appConfig: appConfig,
+        user: user,
+        pageTitle: pageTitle
+      }) ?>
+
+      <main class="p-4 md:p-6 max-w-7xl mx-auto">
+        <?!= include('ui/pages/' + pageName, {
+          appConfig: appConfig,
+          user: user,
+          pageName: pageName
+        }) ?>
+      </main>
+    </div>
+
+  <? } else { ?>
+    
+    <?!= include('ui/pages/login', { appConfig: appConfig, webAppUrl: webAppUrl }) ?>
+
+  <? } ?>
+
+  <?!= include('ui/scripts/app', { webAppUrl: webAppUrl }) ?>
+</body>
+</html>

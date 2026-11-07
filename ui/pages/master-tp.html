@@ -1,0 +1,321 @@
+<div class="space-y-4">
+  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+    <div>
+      <h1 class="text-2xl font-bold">Tujuan Pembelajaran (TP)</h1>
+      <p class="text-sm text-text-muted mt-1">Kelola CP, TP, dan Materi sesuai Kurikulum Merdeka</p>
+    </div>
+    <button onclick="openTpModal()" class="h-10 px-4 rounded-lg bg-primary text-white font-semibold text-sm flex items-center justify-center gap-2">
+      <span class="material-symbols-outlined text-[20px]">add</span> Tambah TP
+    </button>
+  </div>
+
+  <div class="bg-white rounded-xl border border-border overflow-hidden">
+    <!-- TOOLBAR PENCARIAN, FILTER & SORT -->
+    <div class="p-4 border-b border-border bg-gray-50/50 flex flex-wrap gap-3 items-center">
+      
+      <!-- Search -->
+      <div class="relative flex-1 min-w-[200px]">
+        <span class="material-symbols-outlined absolute left-3 top-2.5 text-[20px] text-text-muted">search</span>
+        <input type="text" id="search-input" oninput="applyFilter()" placeholder="Cari kode, materi, atau deskripsi TP..." 
+          class="w-full h-10 pl-10 pr-4 rounded-lg border border-border focus:ring-2 focus:ring-primary focus:outline-none text-sm bg-white">
+      </div>
+
+      <!-- Filter Mapel -->
+      <select id="filter-mapel" onchange="applyFilter()" class="h-10 px-3 rounded-lg border border-border text-sm bg-white min-w-[150px] focus:ring-2 focus:ring-primary focus:outline-none cursor-pointer">
+        <option value="">Semua Mapel</option>
+        <!-- Diisi via JS -->
+      </select>
+
+      <!-- Filter Fase -->
+      <select id="filter-fase" onchange="applyFilter()" class="h-10 px-3 rounded-lg border border-border text-sm bg-white min-w-[150px] focus:ring-2 focus:ring-primary focus:outline-none cursor-pointer">
+        <option value="">Semua Fase</option>
+        <option value="Fase A">Fase A</option>
+        <option value="Fase B">Fase B</option>
+        <option value="Fase C">Fase C</option>
+      </select>
+
+      <!-- Sort / Urutkan -->
+      <select id="sort-order" onchange="applyFilter()" class="h-10 px-3 rounded-lg border border-border text-sm bg-white min-w-[150px] focus:ring-2 focus:ring-primary focus:outline-none cursor-pointer">
+        <option value="kode-asc">Urut: Kode A-Z</option>
+        <option value="kode-desc">Urut: Kode Z-A</option>
+        <option value="mapel">Urut: Mapel</option>
+      </select>
+
+    </div>
+
+    <!-- Tabel -->
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm whitespace-nowrap">
+        <thead class="bg-bg-page border-b border-border">
+          <tr>
+            <th class="text-left px-4 py-3 text-xs font-bold text-text-muted uppercase">Mapel / Elemen</th>
+            <th class="text-left px-4 py-3 text-xs font-bold text-text-muted uppercase">Fase</th>
+            <th class="text-left px-4 py-3 text-xs font-bold text-text-muted uppercase">Kode TP</th>
+            <th class="text-left px-4 py-3 text-xs font-bold text-text-muted uppercase">Tujuan Pembelajaran</th>
+            <th class="text-left px-4 py-3 text-xs font-bold text-text-muted uppercase">Materi / Sub</th>
+            <th class="text-center px-4 py-3 text-xs font-bold text-text-muted uppercase">Aksi</th>
+          </tr>
+        </thead>
+        <tbody id="tp-tbody">
+          <tr><td colspan="6" class="p-8 text-center text-text-muted">Memuat data...</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="p-3 border-t border-border bg-gray-50 text-xs text-text-muted text-right font-semibold" id="row-count">
+      Total: 0 Data
+    </div>
+  </div>
+</div>
+
+<!-- MODAL FORM (Sama seperti sebelumnya, tidak diubah) -->
+<div id="modal-tp" class="hidden fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+  <div class="bg-white rounded-2xl shadow-xl w-full max-w-4xl fade-in max-h-[90vh] flex flex-col">
+    <div class="p-6 border-b border-border flex justify-between items-center shrink-0">
+      <h2 class="text-lg font-bold" id="modal-tp-title">Tambah TP</h2>
+      <button onclick="App.closeModal('modal-tp')" class="w-8 h-8 rounded-lg hover:bg-bg-page flex items-center justify-center"><span class="material-symbols-outlined">close</span></button>
+    </div>
+    
+    <form id="form-tp" onsubmit="handleSaveTp(event)" class="p-6 space-y-6 overflow-y-auto">
+      <input type="hidden" name="tp_id" id="tp-id">
+      
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 bg-gray-50 p-4 rounded-xl border border-gray-200">
+        <div>
+          <label class="block text-sm font-semibold mb-1.5">Mata Pelajaran *</label>
+          <select name="mapel_id" id="tp-mapel" required class="w-full h-10 px-3 rounded-lg border border-border text-sm bg-white"></select>
+        </div>
+        <div>
+          <label class="block text-sm font-semibold mb-1.5">Fase / Tingkat *</label>
+          <input name="fase_tingkat" id="tp-fase" required class="w-full h-10 px-3 rounded-lg border border-border text-sm" placeholder="Fase B (Kelas III)">
+        </div>
+        <div>
+          <label class="block text-sm font-semibold mb-1.5">Elemen CP *</label>
+          <input name="elemen" id="tp-elemen" required class="w-full h-10 px-3 rounded-lg border border-border text-sm" placeholder="Bilangan">
+        </div>
+      </div>
+
+      <div>
+        <label class="block text-sm font-semibold mb-1.5">Capaian Pembelajaran (CP)</label>
+        <textarea name="deskripsi_cp" id="tp-desk-cp" class="w-full h-20 px-3 py-2 rounded-lg border border-border text-sm" placeholder="Pada akhir fase ini..."></textarea>
+      </div>
+
+      <hr class="border-border">
+
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div>
+          <label class="block text-sm font-semibold mb-1.5">Kode TP *</label>
+          <input name="kode_tp" id="tp-kode" required class="w-full h-10 px-3 rounded-lg border border-border text-sm" placeholder="1.1">
+        </div>
+        <div class="md:col-span-3">
+          <label class="block text-sm font-semibold mb-1.5">Deskripsi Tujuan Pembelajaran *</label>
+          <textarea name="deskripsi_tp" id="tp-desk" required class="w-full h-20 px-3 py-2 rounded-lg border border-border text-sm" placeholder="Peserta didik dapat..."></textarea>
+        </div>
+      </div>
+
+      <hr class="border-border">
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label class="block text-sm font-semibold mb-1.5">Judul Materi</label>
+          <input name="judul_materi" id="tp-judul-materi" class="w-full h-10 px-3 rounded-lg border border-border text-sm" placeholder="Bilangan Cacah Sampai 1.000">
+        </div>
+        <div>
+          <label class="block text-sm font-semibold mb-1.5">Profil Pelajar Pancasila</label>
+          <input name="profil_pancasila" id="tp-profil" class="w-full h-10 px-3 rounded-lg border border-border text-sm" placeholder="Mandiri, Kreatif">
+        </div>
+      </div>
+      <div>
+        <label class="block text-sm font-semibold mb-1.5">Sub Materi / Topik</label>
+        <textarea name="sub_materi" id="tp-sub" class="w-full h-20 px-3 py-2 rounded-lg border border-border text-sm" placeholder="• Bilangan dan lambang..."></textarea>
+      </div>
+
+      <div id="tp-error" class="hidden p-3 rounded-lg bg-red-50 text-sm text-danger"></div>
+      
+      <div class="flex justify-end gap-2 pt-4 border-t border-border shrink-0">
+        <button type="button" onclick="App.closeModal('modal-tp')" class="h-10 px-4 rounded-lg border text-sm font-semibold">Batal</button>
+        <button type="submit" class="h-10 px-4 rounded-lg bg-primary text-white text-sm font-semibold">Simpan TP</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+let listMapel = [];
+let allTpData = []; // Menyimpan semua data di memori untuk filter instan
+
+// 1. LOAD DATA DARI SERVER
+async function loadTp() {
+  const tbody = document.getElementById('tp-tbody');
+  App.showSkeleton('tp-tbody', 3);
+  
+  try {
+    // Ambil data Mapel (untuk dropdown form & filter)
+    if (listMapel.length === 0) {
+      const resMapel = await App.callApi('apiReadAll', App.getToken(), 'master_mapel');
+      listMapel = resMapel.data || [];
+      
+      // Isi dropdown di Form
+      document.getElementById('tp-mapel').innerHTML = '<option value="">-- Pilih Mapel --</option>' + 
+        listMapel.map(m => `<option value="${m.mapel_id}">${m.nama_mapel}</option>`).join('');
+      
+      // Isi dropdown di Toolbar Filter
+      document.getElementById('filter-mapel').innerHTML = '<option value="">Semua Mapel</option>' + 
+        listMapel.map(m => `<option value="${m.mapel_id}">${m.nama_mapel}</option>`).join('');
+    }
+
+    // Ambil data TP
+    const res = await App.callApi('apiReadAll', App.getToken(), 'master_tp');
+    allTpData = res.data || [];
+    
+    // Tampilkan ke tabel
+    applyFilter();
+    
+  } catch (err) { 
+    tbody.innerHTML = `<tr><td colspan="6" class="p-8 text-center text-danger">${err.message}</td></tr>`; 
+  }
+}
+
+// 2. FUNGSI FILTER & SORT (Berjalan Instan di Browser)
+function applyFilter() {
+  const q = document.getElementById('search-input').value.toLowerCase();
+  const fMapel = document.getElementById('filter-mapel').value;
+  const fFase = document.getElementById('filter-fase').value;
+  const sortBy = document.getElementById('sort-order').value;
+
+  // A. Filter Data
+  let filtered = allTpData.filter(t => {
+    const mapel = listMapel.find(m => m.mapel_id === t.mapel_id);
+    const mapelName = mapel ? mapel.nama_mapel.toLowerCase() : '';
+
+    // Cek Search
+    const matchQ = String(t.deskripsi_tp || '').toLowerCase().includes(q) || 
+                   String(t.kode_tp || '').toLowerCase().includes(q) || 
+                   String(t.judul_materi || '').toLowerCase().includes(q) ||
+                   mapelName.includes(q);
+    
+    // Cek Dropdown Filter
+    const matchMapel = !fMapel || t.mapel_id === fMapel;
+    const matchFase = !fFase || t.fase_tingkat === fFase;
+
+    return matchQ && matchMapel && matchFase;
+  });
+
+  // B. Sort Data
+  filtered.sort((a, b) => {
+    if (sortBy === 'kode-asc') return String(a.kode_tp).localeCompare(String(b.kode_tp));
+    if (sortBy === 'kode-desc') return String(b.kode_tp).localeCompare(String(a.kode_tp));
+    if (sortBy === 'mapel') {
+      const mapelA = listMapel.find(m => m.mapel_id === a.mapel_id)?.nama_mapel || '';
+      const mapelB = listMapel.find(m => m.mapel_id === b.mapel_id)?.nama_mapel || '';
+      return mapelA.localeCompare(mapelB);
+    }
+    return 0;
+  });
+
+  // C. Render ke Tabel
+  renderTable(filtered);
+}
+
+// 3. FUNGSI RENDER TABEL
+function renderTable(data) {
+  const tbody = document.getElementById('tp-tbody');
+  document.getElementById('row-count').textContent = `Total: ${data.length} Data Ditemukan`;
+
+  if (data.length === 0) {
+    return tbody.innerHTML = `
+      <tr>
+        <td colspan="6" class="p-12 text-center">
+          <span class="material-symbols-outlined text-[48px] text-gray-300 mb-2">search_off</span>
+          <div class="font-bold text-gray-700">Data tidak ditemukan</div>
+          <div class="text-sm text-gray-500">Coba ubah kata kunci atau filter pencarian Anda.</div>
+        </td>
+      </tr>`;
+  }
+
+  tbody.innerHTML = data.map(t => {
+    const mapel = listMapel.find(m => m.mapel_id === t.mapel_id);
+    return `<tr class="border-b hover:bg-bg-page/50">
+      <td class="px-4 py-3">
+        <div class="font-bold">${mapel ? mapel.nama_mapel : t.mapel_id}</div>
+        <div class="text-xs text-text-muted">${App.escapeHtml(t.elemen || '-')}</div>
+      </td>
+      <td class="px-4 py-3 font-semibold">${App.escapeHtml(t.fase_tingkat || '-')}</td>
+      <td class="px-4 py-3 font-mono font-bold text-primary">${App.escapeHtml(t.kode_tp || '-')}</td>
+      <td class="px-4 py-3 min-w-[300px] whitespace-normal">
+        <div class="font-semibold">${App.escapeHtml(t.deskripsi_tp)}</div>
+      </td>
+      <td class="px-4 py-3 min-w-[250px] whitespace-normal text-xs text-text-muted">
+        <div class="font-bold text-gray-700">${App.escapeHtml(t.judul_materi || '-')}</div>
+        <div>${App.escapeHtml(t.sub_materi || '').replace(/\n/g, '<br>')}</div>
+      </td>
+      <td class="px-4 py-3 text-center">
+        <button onclick='editTp(${JSON.stringify(t).replace(/'/g, "&#39;").replace(/"/g, "&quot;")})' class="text-primary hover:underline text-xs font-bold mr-2">Edit</button>
+        <button onclick="hapusTp('${t.tp_id}')" class="text-danger hover:underline text-xs font-bold">Hapus</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+// 4. FUNGSI CRUD (Sama seperti sebelumnya)
+function openTpModal() {
+  document.getElementById('form-tp').reset();
+  document.getElementById('tp-id').value = '';
+  document.getElementById('modal-tp-title').textContent = 'Tambah TP';
+  document.getElementById('tp-error').classList.add('hidden');
+  App.openModal('modal-tp');
+}
+
+function editTp(data) {
+  document.getElementById('tp-id').value = data.tp_id;
+  document.getElementById('tp-mapel').value = data.mapel_id;
+  document.getElementById('tp-fase').value = data.fase_tingkat || '';
+  document.getElementById('tp-elemen').value = data.elemen || '';
+  document.getElementById('tp-desk-cp').value = data.deskripsi_cp || '';
+  document.getElementById('tp-kode').value = data.kode_tp || '';
+  document.getElementById('tp-desk').value = data.deskripsi_tp || '';
+  document.getElementById('tp-judul-materi').value = data.judul_materi || '';
+  document.getElementById('tp-sub').value = data.sub_materi || '';
+  document.getElementById('tp-profil').value = data.profil_pancasila || '';
+  
+  document.getElementById('modal-tp-title').textContent = 'Edit TP';
+  document.getElementById('tp-error').classList.add('hidden');
+  App.openModal('modal-tp');
+}
+
+async function handleSaveTp(e) {
+  e.preventDefault();
+  const btn = e.target.querySelector('button[type="submit"]'); 
+  btn.disabled = true; btn.textContent = 'Menyimpan...';
+  
+  const payload = Object.fromEntries(new FormData(e.target).entries());
+  if (!payload.tp_id) delete payload.tp_id;
+
+  try {
+    if (document.getElementById('tp-id').value !== '') {
+      await App.callApi('apiUpdate', App.getToken(), 'master_tp', payload.tp_id, payload);
+    } else {
+      await App.callApi('apiCreate', App.getToken(), 'master_tp', payload);
+    }
+    App.closeModal('modal-tp'); 
+    App.toast('Data TP disimpan', 'success'); 
+    loadTp(); // Refresh data
+  } catch (err) {
+    document.getElementById('tp-error').textContent = err.message; 
+    document.getElementById('tp-error').classList.remove('hidden');
+  } finally { 
+    btn.disabled = false; 
+    btn.textContent = 'Simpan TP'; 
+  }
+}
+
+async function hapusTp(id) {
+  if (!confirm('Hapus TP ini?')) return;
+  try { 
+    await App.callApi('apiDelete', App.getToken(), 'master_tp', id); 
+    App.toast('TP dihapus', 'info'); 
+    loadTp(); 
+  }
+  catch (err) { App.toast(err.message, 'error'); }
+}
+
+document.addEventListener('DOMContentLoaded', loadTp);
+</script>

@@ -1,0 +1,447 @@
+<!-- Library SheetJS untuk membaca Excel -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+<div class="space-y-4">
+  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+    <div>
+      <h1 class="text-2xl font-bold">Data Siswa</h1>
+      <p class="text-sm text-text-muted mt-1" id="page-subtitle">Kelola data peserta didik & riwayat mutasi</p>
+    </div>
+    
+    <!-- 👇 TOMBOL ADMIN (Akan disembunyikan jika Role = GURU) 👇 -->
+    <div class="flex gap-2" id="admin-actions">
+      <button onclick="openImportModal()" class="h-10 px-4 rounded-lg border border-primary text-primary font-semibold text-sm flex items-center gap-2 bg-primary-50">
+        <span class="material-symbols-outlined text-[20px]">upload_file</span> Import Excel
+      </button>
+      <button onclick="openSiswaModal()" class="h-10 px-4 rounded-lg bg-primary text-white font-semibold text-sm flex items-center gap-2">
+        <span class="material-symbols-outlined text-[20px]">add</span> Tambah Siswa
+      </button>
+    </div>
+  </div>
+
+  <div class="bg-white rounded-xl border border-border overflow-hidden">
+    <!-- Toolbar Filter -->
+    <div class="p-4 border-b border-border bg-gray-50/50 flex flex-wrap gap-3 items-center">
+      <div class="relative flex-1 min-w-[200px]">
+        <span class="material-symbols-outlined absolute left-3 top-2.5 text-[20px] text-text-muted">search</span>
+        <input type="text" id="search-siswa" oninput="renderSiswa()" placeholder="Cari nama atau NISN..." class="w-full h-10 pl-10 pr-4 rounded-lg border border-border text-sm bg-white">
+      </div>
+      
+      <select id="filter-kelas" onchange="renderSiswa()" class="h-10 px-3 rounded-lg border border-border text-sm bg-white min-w-[150px]"></select>
+      
+      <select id="filter-status" onchange="renderSiswa()" class="h-10 px-3 rounded-lg border border-border text-sm bg-white min-w-[130px]">
+        <option value="">Semua Status</option>
+        <option value="AKTIF">Aktif</option>
+        <option value="MUTASI">Mutasi</option>
+        <option value="LULUS">Lulus</option>
+      </select>
+    </div>
+
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm whitespace-nowrap">
+        <thead class="bg-bg-page border-b border-border">
+          <tr>
+            <th class="text-left px-4 py-3 text-xs font-bold text-text-muted uppercase">NISN / Nama</th>
+            <th class="text-left px-4 py-3 text-xs font-bold text-text-muted uppercase">L/P</th>
+            <th class="text-left px-4 py-3 text-xs font-bold text-text-muted uppercase">Kelas</th>
+            <th class="text-left px-4 py-3 text-xs font-bold text-text-muted uppercase">Tahun Ajaran</th>
+            <th class="text-left px-4 py-3 text-xs font-bold text-text-muted uppercase">Orang Tua</th>
+            <th class="text-left px-4 py-3 text-xs font-bold text-text-muted uppercase">Status</th>
+            <th class="text-center px-4 py-3 text-xs font-bold text-text-muted uppercase">Aksi</th>
+          </tr>
+        </thead>
+        <tbody id="siswa-tbody"></tbody>
+      </table>
+    </div>
+    <div class="p-3 border-t text-xs text-text-muted text-right font-semibold" id="row-count-siswa">Total: 0 Data</div>
+  </div>
+</div>
+
+<!-- MODAL FORM SISWA -->
+<div id="modal-siswa" class="hidden fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+  <div class="bg-white rounded-2xl shadow-xl w-full max-w-2xl fade-in max-h-[90vh] flex flex-col">
+    <div class="p-6 border-b border-border flex justify-between items-center">
+      <h2 class="text-lg font-bold" id="modal-siswa-title">Tambah Siswa</h2>
+      <button onclick="App.closeModal('modal-siswa')" class="w-8 h-8 rounded-lg hover:bg-bg-page flex items-center justify-center"><span class="material-symbols-outlined">close</span></button>
+    </div>
+    <form id="form-siswa" onsubmit="handleSaveSiswa(event)" class="p-6 space-y-4 overflow-y-auto">
+      <input type="hidden" name="siswa_id" id="siswa-id">
+      <input type="hidden" name="tahun_ajaran_id" id="siswa-tahun-id">
+      
+      <div class="grid grid-cols-2 gap-4">
+        <div><label class="block text-sm font-semibold mb-1.5">NISN *</label><input name="nisn" id="siswa-nisn" required class="w-full h-10 px-3 rounded-lg border border-border text-sm"></div>
+        <div><label class="block text-sm font-semibold mb-1.5">Nama Lengkap *</label><input name="nama_siswa" id="siswa-nama" required class="w-full h-10 px-3 rounded-lg border border-border text-sm"></div>
+      </div>
+
+      <div class="grid grid-cols-3 gap-4">
+        <div><label class="block text-sm font-semibold mb-1.5">Jenis Kelamin *</label><select name="jenis_kelamin" id="siswa-jk" required class="w-full h-10 px-3 rounded-lg border border-border text-sm"><option value="L">Laki-laki</option><option value="P">Perempuan</option></select></div>
+        <div><label class="block text-sm font-semibold mb-1.5">Kelas *</label><select name="kelas_id" id="siswa-kelas" required class="w-full h-10 px-3 rounded-lg border border-border text-sm"></select></div>
+        <div><label class="block text-sm font-semibold mb-1.5">Status *</label><select name="status_siswa" id="siswa-status" required class="w-full h-10 px-3 rounded-lg border border-border text-sm"><option value="AKTIF">Aktif</option><option value="MUTASI">Mutasi</option><option value="LULUS">Lulus</option></select></div>
+      </div>
+
+      <div class="bg-blue-50 p-3 rounded-lg border border-blue-100 flex items-center gap-2">
+        <span class="material-symbols-outlined text-blue-600">info</span>
+        <span class="text-sm text-blue-800">
+          Data akan disimpan pada Tahun Ajaran: <b id="info-tahun-ajaran">Memuat...</b>
+        </span>
+      </div>
+
+      <div class="grid grid-cols-2 gap-4">
+        <div><label class="block text-sm font-semibold mb-1.5">Tempat Lahir</label><input name="tempat_lahir" id="siswa-tempat" class="w-full h-10 px-3 rounded-lg border border-border text-sm"></div>
+        <div><label class="block text-sm font-semibold mb-1.5">Tanggal Lahir</label><input type="date" name="tanggal_lahir" id="siswa-tgl" class="w-full h-10 px-3 rounded-lg border border-border text-sm"></div>
+      </div>
+      <div class="grid grid-cols-2 gap-4">
+        <div><label class="block text-sm font-semibold mb-1.5">Nama Orang Tua</label><input name="nama_orang_tua" id="siswa-ortu" class="w-full h-10 px-3 rounded-lg border border-border text-sm"></div>
+        <div><label class="block text-sm font-semibold mb-1.5">No HP Orang Tua</label><input name="no_hp_orang_tua" id="siswa-hp" class="w-full h-10 px-3 rounded-lg border border-border text-sm"></div>
+      </div>
+      <div><label class="block text-sm font-semibold mb-1.5">Alamat Lengkap</label><textarea name="alamat" id="siswa-alamat" class="w-full h-20 px-3 py-2 rounded-lg border border-border text-sm"></textarea></div>
+
+      <div id="siswa-error" class="hidden p-3 rounded-lg bg-red-50 text-sm text-danger"></div>
+      <div class="flex justify-end gap-2 pt-2 border-t border-border">
+        <button type="button" onclick="App.closeModal('modal-siswa')" class="h-10 px-4 rounded-lg border text-sm font-semibold">Batal</button>
+        <button type="submit" class="h-10 px-4 rounded-lg bg-primary text-white text-sm font-semibold">Simpan</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- MODAL IMPORT EXCEL -->
+<div id="modal-import" class="hidden fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+  <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg fade-in">
+    <div class="p-6 border-b border-border flex justify-between items-center">
+      <h2 class="text-lg font-bold">Import Data Siswa (Excel)</h2>
+      <button onclick="App.closeModal('modal-import')" class="w-8 h-8 rounded-lg hover:bg-bg-page flex items-center justify-center"><span class="material-symbols-outlined">close</span></button>
+    </div>
+    <div class="p-6 space-y-4">
+      <div class="flex justify-between items-center bg-gray-50 p-3 rounded-lg border border-border">
+        <span class="text-sm font-semibold">Belum punya format?</span>
+        <button onclick="downloadTemplate()" class="h-9 px-4 rounded-lg bg-white border border-gray-300 text-gray-700 font-bold text-sm flex items-center gap-2 hover:bg-gray-100">
+          <span class="material-symbols-outlined text-[18px]">download</span> Template Excel
+        </button>
+      </div>
+      <div class="border-2 border-dashed border-primary/50 bg-primary-50/30 rounded-xl p-8 text-center cursor-pointer hover:bg-primary-50 transition-colors" onclick="document.getElementById('excel-file').click()">
+        <span class="material-symbols-outlined text-[48px] text-primary mb-2">upload_file</span>
+        <div class="font-bold text-gray-800" id="file-name-display">Klik untuk pilih file Excel (.xlsx)</div>
+        <div class="text-xs text-text-muted mt-1">atau drag & drop file ke sini</div>
+        <input type="file" id="excel-file" accept=".xlsx, .xls, .csv" class="hidden" onchange="handleFileSelect(event)">
+      </div>
+      <div id="import-error" class="hidden p-3 rounded-lg bg-red-50 text-sm text-danger"></div>
+      <div class="flex justify-end gap-2 pt-2">
+        <button type="button" onclick="App.closeModal('modal-import')" class="h-10 px-4 rounded-lg border text-sm font-semibold">Batal</button>
+        <button type="button" onclick="prosesImportExcel()" id="btn-import" class="h-10 px-4 rounded-lg bg-primary text-white text-sm font-semibold">Mulai Import</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL MUTASI -->
+<div id="modal-mutasi" class="hidden fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+  <div class="bg-white rounded-2xl shadow-xl w-full max-w-md fade-in">
+    <div class="p-6 border-b border-border flex justify-between items-center">
+      <h2 class="text-lg font-bold">Mutasi Siswa</h2>
+      <button onclick="App.closeModal('modal-mutasi')" class="w-8 h-8 rounded-lg hover:bg-bg-page flex items-center justify-center"><span class="material-symbols-outlined">close</span></button>
+    </div>
+    <form id="form-mutasi" onsubmit="handleSaveMutasi(event)" class="p-6 space-y-4">
+      <input type="hidden" name="siswa_id" id="mut-siswa-id">
+      <div><label class="block text-sm font-semibold mb-1.5">Nama Siswa</label><input type="text" id="mut-siswa-nama" readonly class="w-full h-10 px-3 bg-gray-100 border border-border rounded-lg text-sm text-gray-600"></div>
+      <div>
+        <label class="block text-sm font-semibold mb-1.5">Jenis Mutasi *</label>
+        <select name="jenis_mutasi" id="mut-jenis" onchange="toggleMutasiForm()" required class="w-full h-10 px-3 rounded-lg border border-border text-sm">
+          <option value="PINDAH">Pindah Kelas (Naik/Turun)</option>
+          <option value="KELUAR">Mutasi Keluar (Siswa Pindah Sekolah)</option>
+          <option value="MASUK">Mutasi Masuk (Siswa Baru)</option>
+        </select>
+      </div>
+      <div id="wrap-kelas-tujuan"><label class="block text-sm font-semibold mb-1.5">Kelas Tujuan *</label><select name="kelas_tujuan" id="mut-kelas" class="w-full h-10 px-3 rounded-lg border border-border text-sm"></select></div>
+      <div><label class="block text-sm font-semibold mb-1.5">Tanggal Mutasi *</label><input type="date" name="tanggal_mutasi" required class="w-full h-10 px-3 rounded-lg border border-border text-sm"></div>
+      <div><label class="block text-sm font-semibold mb-1.5">Keterangan / Alasan</label><input name="keterangan" class="w-full h-10 px-3 rounded-lg border border-border text-sm" placeholder="Cth: Pindah domisili orang tua"></div>
+      <div class="flex justify-end gap-2 pt-2">
+        <button type="button" onclick="App.closeModal('modal-mutasi')" class="h-10 px-4 rounded-lg border text-sm font-semibold">Batal</button>
+        <button type="submit" class="h-10 px-4 rounded-lg bg-warning text-white text-sm font-semibold">Proses Mutasi</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+let listKelas = [];
+let listTahunAjaran = [];
+let allSiswa = [];
+let activeTAId = '';
+let excelData = []; 
+let currentRole = window.__USER__.role; // Deteksi Role
+
+// 1. LOAD DATA
+async function loadSiswa() {
+  App.showSkeleton('siswa-tbody', 3);
+  
+  // Sembunyikan tombol admin jika yang login adalah GURU
+  if (currentRole === 'GURU') {
+    document.getElementById('admin-actions').style.display = 'none';
+    document.getElementById('page-subtitle').textContent = 'Daftar siswa di kelas yang Anda ampu';
+  }
+
+  try {
+    const [resKelas, resTA] = await Promise.all([
+      App.callApi('apiReadAll', App.getToken(), 'master_kelas'),
+      App.callApi('apiReadAll', App.getToken(), 'master_tahun_ajaran')
+    ]);
+
+    listKelas = resKelas.data || [];
+    listTahunAjaran = resTA.data || [];
+
+    // Cari ID Tahun Ajaran yang aktif
+    const activeTA = listTahunAjaran.find(t => String(t.is_aktif).toUpperCase() === 'TRUE');
+    activeTAId = activeTA ? activeTA.tahun_ajaran_id : '';
+    
+    // Set info di form
+    document.getElementById('info-tahun-ajaran').textContent = activeTA ? activeTA.nama_tahun_ajaran : 'Tidak ada tahun ajaran aktif!';
+    document.getElementById('siswa-tahun-id').value = activeTAId;
+    
+    // 👇 TARIK DATA SISWA BERDASARKAN ROLE 👇
+    if (currentRole === 'GURU') {
+      const resSiswa = await App.callApi('apiGetMyStudents', App.getToken());
+      allSiswa = resSiswa.data || [];
+    } else {
+      const resSiswa = await App.callApi('apiReadAll', App.getToken(), 'master_siswa');
+      // Filter hanya siswa di tahun ajaran aktif untuk Admin
+      allSiswa = (resSiswa.data || []).filter(s => s.tahun_ajaran_id === activeTAId);
+    }
+    
+    // Isi Dropdown Kelas
+    const optKelas = '<option value="">-- Pilih Kelas --</option>' + listKelas.map(k => `<option value="${k.kelas_id}">${k.nama_kelas}</option>`).join('');
+    document.getElementById('siswa-kelas').innerHTML = optKelas;
+    document.getElementById('mut-kelas').innerHTML = optKelas;
+    
+    // Isi Dropdown Filter Kelas (Hanya menampilkan kelas yang ada siswanya)
+    let filterKelasHTML = '<option value="">Semua Kelas</option>';
+    const distinctKelasIds = [...new Set(allSiswa.map(s => s.kelas_id))];
+    distinctKelasIds.forEach(kId => {
+      const kls = listKelas.find(k => k.kelas_id === kId);
+      if (kls) filterKelasHTML += `<option value="${kId}">${kls.nama_kelas}</option>`;
+    });
+    document.getElementById('filter-kelas').innerHTML = filterKelasHTML;
+
+    renderSiswa();
+  } catch (err) { 
+    document.getElementById('siswa-tbody').innerHTML = `<tr><td colspan="7" class="p-8 text-center text-danger">${err.message}</td></tr>`; 
+  }
+}
+
+// 2. RENDER TABEL
+function renderSiswa() {
+  const tbody = document.getElementById('siswa-tbody');
+  const q = document.getElementById('search-siswa').value.toLowerCase();
+  const fKelas = document.getElementById('filter-kelas').value;
+  const fStatus = document.getElementById('filter-status').value;
+
+  const filtered = allSiswa.filter(s => {
+    const matchQ = String(s.nama_siswa).toLowerCase().includes(q) || String(s.nisn).toLowerCase().includes(q);
+    const matchKelas = !fKelas || s.kelas_id === fKelas;
+    const matchStatus = !fStatus || s.status_siswa === fStatus;
+    return matchQ && matchKelas && matchStatus;
+  });
+
+  document.getElementById('row-count-siswa').textContent = `Total: ${filtered.length} Data`;
+
+  if (filtered.length === 0) {
+    return tbody.innerHTML = `<tr><td colspan="7" class="p-8 text-center text-text-muted">Data siswa tidak ditemukan.</td></tr>`;
+  }
+
+  tbody.innerHTML = filtered.map(s => {
+    // Gunakan nama_kelas dari API jika role GURU, atau cari dari listKelas jika ADMIN
+    const namaKelas = s.nama_kelas || (listKelas.find(k => k.kelas_id === s.kelas_id)?.nama_kelas) || '-';
+    const ta = listTahunAjaran.find(t => t.tahun_ajaran_id === s.tahun_ajaran_id);
+    
+    let badge = s.status_siswa === 'AKTIF' ? 'bg-green-100 text-green-700' : (s.status_siswa === 'MUTASI' ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-700');
+    
+    // Tombol Aksi Berdasarkan Role
+    let actionBtns = '';
+    if (currentRole === 'ADMIN') {
+      actionBtns = `
+        <button onclick="openMutasiModal('${s.siswa_id}', '${App.escapeHtml(s.nama_siswa)}')" class="text-warning hover:underline text-xs font-bold mr-2">Mutasi</button>
+        <button onclick='editSiswa(${JSON.stringify(s).replace(/'/g, "&#39;")})' class="text-primary hover:underline text-xs font-bold mr-2">Edit</button>
+        <button onclick="hapusSiswa('${s.siswa_id}')" class="text-danger hover:underline text-xs font-bold">Hapus</button>
+      `;
+    } else {
+      actionBtns = `<span class="text-xs text-text-muted italic">Hanya Lihat</span>`;
+    }
+
+    return `<tr class="border-b hover:bg-bg-page/50">
+      <td class="px-4 py-3">
+        <div class="font-mono text-xs text-text-muted">${App.escapeHtml(s.nisn)}</div>
+        <div class="font-semibold text-gray-800">${App.escapeHtml(s.nama_siswa)}</div>
+      </td>
+      <td class="px-4 py-3">${s.jenis_kelamin}</td>
+      <td class="px-4 py-3 font-semibold">${App.escapeHtml(namaKelas)}</td>
+      <td class="px-4 py-3 font-semibold text-primary">${ta ? ta.nama_tahun_ajaran : (s.tahun_ajaran_id || '-')}</td>
+      <td class="px-4 py-3 text-sm">${App.escapeHtml(s.nama_orang_tua || '-')}</td>
+      <td class="px-4 py-3"><span class="px-2 py-0.5 rounded-full text-xs font-bold ${badge}">${s.status_siswa}</span></td>
+      <td class="px-4 py-3 text-center">${actionBtns}</td>
+    </tr>`;
+  }).join('');
+}
+
+// 3. FUNGSI CRUD (Admin)
+function openSiswaModal() {
+  if (!activeTAId) return App.toast('Tidak ada Tahun Ajaran aktif. Harap aktifkan di menu Tahun Ajaran.', 'warning');
+  
+  document.getElementById('form-siswa').reset();
+  document.getElementById('siswa-id').value = '';
+  document.getElementById('siswa-tahun-id').value = activeTAId;
+  document.getElementById('modal-siswa-title').textContent = 'Tambah Siswa';
+  document.getElementById('siswa-error').classList.add('hidden');
+  App.openModal('modal-siswa');
+}
+
+function editSiswa(data) {
+  document.getElementById('siswa-id').value = data.siswa_id;
+  document.getElementById('siswa-tahun-id').value = data.tahun_ajaran_id || activeTAId;
+  document.getElementById('siswa-nisn').value = data.nisn;
+  document.getElementById('siswa-nama').value = data.nama_siswa;
+  document.getElementById('siswa-jk').value = data.jenis_kelamin;
+  document.getElementById('siswa-kelas').value = data.kelas_id;
+  document.getElementById('siswa-status').value = data.status_siswa;
+  document.getElementById('siswa-tempat').value = data.tempat_lahir || '';
+  document.getElementById('siswa-tgl').value = data.tanggal_lahir || '';
+  document.getElementById('siswa-ortu').value = data.nama_orang_tua || '';
+  document.getElementById('siswa-hp').value = data.no_hp_orang_tua || '';
+  document.getElementById('siswa-alamat').value = data.alamat || '';
+  
+  document.getElementById('modal-siswa-title').textContent = 'Edit Siswa';
+  document.getElementById('siswa-error').classList.add('hidden');
+  App.openModal('modal-siswa');
+}
+
+async function handleSaveSiswa(e) {
+  e.preventDefault();
+  const btn = e.target.querySelector('button[type="submit"]'); btn.disabled = true; btn.textContent = 'Menyimpan...';
+  const payload = Object.fromEntries(new FormData(e.target).entries());
+  try {
+    if (payload.siswa_id) await App.callApi('apiUpdate', App.getToken(), 'master_siswa', payload.siswa_id, payload);
+    else await App.callApi('apiCreate', App.getToken(), 'master_siswa', payload);
+    App.closeModal('modal-siswa'); App.toast('Data siswa disimpan', 'success'); loadSiswa();
+  } catch (err) {
+    document.getElementById('siswa-error').textContent = err.message; document.getElementById('siswa-error').classList.remove('hidden');
+  } finally { btn.disabled = false; btn.textContent = 'Simpan'; }
+}
+
+async function hapusSiswa(id) {
+  if (!confirm('Hapus data siswa ini?')) return;
+  try { await App.callApi('apiDelete', App.getToken(), 'master_siswa', id); App.toast('Siswa dihapus', 'info'); loadSiswa(); }
+  catch (err) { App.toast(err.message, 'error'); }
+}
+
+// 4. IMPORT EXCEL (Admin)
+function openImportModal() {
+  document.getElementById('excel-file').value = '';
+  document.getElementById('file-name-display').textContent = 'Klik untuk pilih file Excel (.xlsx)';
+  document.getElementById('import-error').classList.add('hidden');
+  excelData = [];
+  App.openModal('modal-import');
+}
+
+function downloadTemplate() {
+  const headers = ['NISN', 'Nama Siswa', 'L/P', 'Kelas ID', 'Tempat Lahir', 'Tanggal Lahir', 'Nama Orang Tua', 'No HP Orang Tua', 'Alamat'];
+  const exampleRow = ['0012345678', 'Ahmad Fauzi', 'L', 'KLS-01A', 'Bandung', '2018-05-12', 'Budi', '08123456789', 'Jl. Merdeka No. 1'];
+  
+  const csvContent = headers.join(',') + '\n' + exampleRow.join(',');
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.setAttribute('download', 'Template_Import_Siswa.csv');
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
+
+function handleFileSelect(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  
+  document.getElementById('file-name-display').textContent = file.name;
+  document.getElementById('import-error').classList.add('hidden');
+  
+  const reader = new FileReader();
+  reader.onload = function(evt) {
+    try {
+      const data = new Uint8Array(evt.target.result);
+      const workbook = XLSX.read(data, {type: 'array'});
+      const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+      excelData = XLSX.utils.sheet_to_json(worksheet, {header: 1});
+      if (excelData.length > 0) excelData.shift();
+      App.toast(`File berhasil dibaca. ${excelData.length} baris siap diimport.`, 'info');
+    } catch (err) {
+      document.getElementById('import-error').textContent = 'Gagal membaca file Excel: ' + err.message;
+      document.getElementById('import-error').classList.remove('hidden');
+      excelData = [];
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+async function prosesImportExcel() {
+  if (excelData.length === 0) return App.toast('Silakan pilih file Excel terlebih dahulu', 'warning');
+  const btn = document.getElementById('btn-import');
+  const errEl = document.getElementById('import-error');
+  
+  btn.disabled = true; btn.textContent = 'Memproses...';
+  errEl.classList.add('hidden');
+  App.showLoading('Mengimport data siswa...');
+  btn.disabled = true; 
+  errEl.classList.add('hidden');
+
+  try {
+    const res = await App.callApi('apiImportSiswa', App.getToken(), excelData);
+    App.closeModal('modal-import');
+    App.toast(`Import Selesai: ${res.data.successCount} data masuk.`, 'success');
+    if (res.data.errors.length > 0) alert('Beberapa baris gagal diimport:\n' + res.data.errors.join('\n'));
+    loadSiswa();
+  } catch (err) {
+    errEl.textContent = err.message;
+    errEl.classList.remove('hidden');
+  } finally {
+    btn.disabled = false; btn.textContent = 'Mulai Import';
+        App.hideLoading();
+    btn.disabled = false; 
+
+  }
+}
+
+// 5. FUNGSI MUTASI (Admin)
+function openMutasiModal(id, nama) {
+  document.getElementById('form-mutasi').reset();
+  document.getElementById('mut-siswa-id').value = id;
+  document.getElementById('mut-siswa-nama').value = nama;
+  toggleMutasiForm();
+  App.openModal('modal-mutasi');
+}
+
+function toggleMutasiForm() {
+  const jenis = document.getElementById('mut-jenis').value;
+  const wrap = document.getElementById('wrap-kelas-tujuan');
+  if (jenis === 'KELUAR') {
+    wrap.style.display = 'none';
+    document.getElementById('mut-kelas').removeAttribute('required');
+  } else {
+    wrap.style.display = 'block';
+    document.getElementById('mut-kelas').setAttribute('required', 'true');
+  }
+}
+
+async function handleSaveMutasi(e) {
+  e.preventDefault();
+  const btn = e.target.querySelector('button[type="submit"]'); btn.disabled = true; btn.textContent = 'Memproses...';
+  const payload = Object.fromEntries(new FormData(e.target).entries());
+  try {
+    await App.callApi('apiMutasiSiswa', App.getToken(), payload);
+    App.closeModal('modal-mutasi');
+    App.toast('Mutasi berhasil diproses', 'success');
+    loadSiswa();
+  } catch (err) {
+    App.toast(err.message, 'error');
+  } finally { btn.disabled = false; btn.textContent = 'Proses Mutasi'; }
+}
+
+document.addEventListener('DOMContentLoaded', loadSiswa);
+</script>

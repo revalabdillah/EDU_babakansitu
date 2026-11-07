@@ -1,0 +1,150 @@
+<script>
+window.__WEB_APP_URL__ = '<?!= typeof webAppUrl !== "undefined" ? webAppUrl : "" ?>';
+
+const TOKEN_KEY = 'edumanage_token';
+
+const App = {
+  getToken: function() { return window.__TOKEN__ || sessionStorage.getItem(TOKEN_KEY) || ''; },
+  setToken: function(t) { sessionStorage.setItem(TOKEN_KEY, t); window.__TOKEN__ = t; },
+  clearToken: function() { sessionStorage.removeItem(TOKEN_KEY); window.__TOKEN__ = ''; },
+
+  callApi: function(fnName, ...args) {
+    console.log(`[API REQUEST] ${fnName}:`, args);
+    
+    return new Promise((resolve, reject) => {
+      google.script.run
+        .withSuccessHandler(res => {
+          console.log(`[API RESPONSE] ${fnName}:`, res);
+          if (!res) {
+            reject({ success: false, message: 'Server mengembalikan null.' });
+            return;
+          }
+          if (res.success === false) {
+            if (res.error === 'SESSION_EXPIRED' || res.error === 'TOKEN_MISSING') {
+              this.redirectToLogin();
+              return;
+            }
+            reject(res);
+          } else {
+            resolve(res);
+          }
+        })
+        .withFailureHandler(err => {
+            console.error(`[API ERROR] ${fnName}:`, err);
+            reject({ success: false, message: err.message });
+        })
+        .apiCallRouter({ action: fnName, args: args });
+    });
+  },
+
+  redirectToLogin: function() {
+    this.clearToken();
+    const form = document.createElement('form');
+    form.method = 'GET';
+    form.action = window.__WEB_APP_URL__;
+    form.target = '_top';
+    
+    const input = document.createElement('input');
+    input.type = 'hidden';
+    input.name = 'page';
+    input.value = 'login';
+    
+    form.appendChild(input);
+    document.body.appendChild(form);
+    form.submit();
+  },
+
+  toast: function(message, type) {
+    type = type || 'info';
+    const colors = { success: 'bg-success', error: 'bg-danger', warning: 'bg-warning', info: 'bg-info' };
+    const icons = { success: 'check_circle', error: 'error', warning: 'warning', info: 'info' };
+    const el = document.createElement('div');
+    el.className = `fixed top-20 right-4 z-[9999] flex items-center gap-3 px-4 py-3 rounded-xl text-white shadow-lg fade-in max-w-sm ${colors[type] || colors.info}`;
+    el.innerHTML = `<span class="material-symbols-outlined">${icons[type] || 'info'}</span><span class="text-sm font-medium flex-1">${message}</span>`;
+    document.body.appendChild(el);
+    setTimeout(() => { el.style.opacity = '0'; el.style.transition = 'opacity 0.3s'; }, 3500);
+    setTimeout(() => el.remove(), 4000);
+  },
+
+  openModal: function(id) { const el = document.getElementById(id); if (el) el.classList.remove('hidden'); },
+  closeModal: function(id) { const el = document.getElementById(id); if (el) el.classList.add('hidden'); },
+
+  showSkeleton: function(elId, rows) {
+    rows = rows || 3;
+    const el = document.getElementById(elId);
+    if (!el) return;
+    let html = '';
+    for (let i = 0; i < rows; i++) {
+      html += `<div class="p-4 border-b border-border"><div class="skeleton h-4 w-3/4 mb-2"></div><div class="skeleton h-3 w-1/2"></div></div>`;
+    }
+    el.innerHTML = html;
+  },
+
+    // 👇 TAMBAHKAN FUNGSI INI UNTUK GLOBAL LOADING 👇
+  showLoading: function(text) {
+    if (document.getElementById('global-loader')) return; // Jangan dobel
+    const el = document.createElement('div');
+    el.id = 'global-loader';
+    el.className = 'fixed inset-0 z-[9999] bg-black/50 backdrop-blur-sm flex flex-col items-center justify-center text-white';
+    el.innerHTML = `
+      <div class="w-12 h-12 border-4 border-white/30 border-t-white rounded-full animate-spin mb-4"></div>
+      <div class="font-semibold text-lg drop-shadow-md">${text || 'Memproses data...'}</div>
+    `;
+    document.body.appendChild(el);
+  },
+  hideLoading: function() {
+    const el = document.getElementById('global-loader');
+    if (el) el.remove();
+  },
+
+  // FUNGSI FORMAT TANGGAL
+  formatDate: function(dateStr) {
+    if (!dateStr) return '-';
+    try {
+      const d = new Date(dateStr);
+      if (isNaN(d)) return dateStr;
+      return d.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
+    } catch (e) { return dateStr; }
+  },
+
+  // FUNGSI FORMAT JAM (BARU)
+  formatTime: function(timeStr) {
+    if (!timeStr) return '-';
+    const str = String(timeStr);
+    if (str.includes(' ') && str.includes(':')) {
+      const timePart = str.split(' ')[1]; 
+      return timePart.substring(0, 5);    
+    }
+    return str; 
+  },
+
+  escapeHtml: function(str) {
+    if (str === null || str === undefined) return '';
+    return String(str).replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
+  },
+
+  formatRole: function(role) { return String(role || '').replace(/_/g, ' '); },
+
+  badge: function(text, colorMap) {
+    colorMap = colorMap || {};
+    const cls = colorMap[text] || 'bg-gray-100 text-gray-700';
+    return `<span class="inline-block px-2.5 py-0.5 rounded-full text-xs font-bold ${cls}">${text}</span>`;
+  }
+};
+
+function handleLogout() {
+  if (!confirm('Yakin ingin keluar?')) return;
+  App.callApi('apiLogout', App.getToken()).finally(() => {
+    App.redirectToLogin();
+  });
+}
+
+if (typeof toggleSidebar !== 'function') {
+  window.toggleSidebar = function() {
+    const sb = document.getElementById('sidebar');
+    const bd = document.getElementById('sidebar-backdrop');
+    if (sb) sb.classList.toggle('-translate-x-full');
+    if (bd) bd.classList.toggle('hidden');
+  };
+}
+</script>

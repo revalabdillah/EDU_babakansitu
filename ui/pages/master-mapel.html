@@ -1,0 +1,158 @@
+<div class="space-y-4">
+  <div class="flex items-center justify-between flex-wrap gap-3">
+    <div>
+      <h1 class="text-2xl font-bold">Mata Pelajaran</h1>
+      <p class="text-sm text-text-muted mt-1">Kelola daftar mata pelajaran sekolah</p>
+    </div>
+    <button onclick="openMapelModal()" class="h-10 px-4 rounded-lg bg-primary text-white font-semibold text-sm flex items-center gap-2">
+      <span class="material-symbols-outlined text-[20px]">add</span> Tambah Mapel
+    </button>
+  </div>
+
+  <div class="bg-white rounded-xl border border-border overflow-hidden">
+    <!-- Toolbar Pencarian & Filter -->
+    <div class="p-4 border-b border-border bg-gray-50/50 flex flex-wrap gap-3 items-center">
+      <div class="relative flex-1 min-w-[200px]">
+        <span class="material-symbols-outlined absolute left-3 top-2.5 text-[20px] text-text-muted">search</span>
+        <input type="text" id="search-mapel" oninput="renderMapel()" placeholder="Cari kode atau nama mapel..." class="w-full h-10 pl-10 pr-4 rounded-lg border border-border text-sm bg-white">
+      </div>
+    </div>
+
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead class="bg-bg-page border-b border-border">
+          <tr>
+            <th class="text-left px-4 py-3 text-xs font-bold text-text-muted uppercase">Kode Mapel</th>
+            <th class="text-left px-4 py-3 text-xs font-bold text-text-muted uppercase">Nama Mapel</th>
+            <th class="text-center px-4 py-3 text-xs font-bold text-text-muted uppercase">Aksi</th>
+          </tr>
+        </thead>
+        <tbody id="mapel-tbody"><tr><td colspan="3" class="p-8 text-center text-text-muted">Memuat data...</td></tr></tbody>
+      </table>
+    </div>
+    <div class="p-3 border-t text-xs text-text-muted text-right font-semibold" id="row-count-mapel">Total: 0 Data</div>
+  </div>
+</div>
+
+<!-- MODAL FORM MAPEL -->
+<div id="modal-mapel" class="hidden fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+  <div class="bg-white rounded-2xl shadow-xl w-full max-w-md fade-in">
+    <div class="p-6 border-b border-border flex justify-between items-center">
+      <h2 class="text-lg font-bold" id="modal-mapel-title">Tambah Mapel</h2>
+      <button onclick="App.closeModal('modal-mapel')" class="w-8 h-8 rounded-lg hover:bg-bg-page flex items-center justify-center"><span class="material-symbols-outlined">close</span></button>
+    </div>
+    <form id="form-mapel" onsubmit="handleSaveMapel(event)" class="p-6 space-y-4">
+      <input type="hidden" name="mapel_id" id="mapel-id">
+      <div>
+        <label class="block text-sm font-semibold mb-1.5">Kode Mapel *</label>
+        <input name="kode_mapel" id="mapel-kode" required class="w-full h-10 px-3 rounded-lg border border-border text-sm" placeholder="Contoh: MTK">
+      </div>
+      <div>
+        <label class="block text-sm font-semibold mb-1.5">Nama Mapel *</label>
+        <input name="nama_mapel" id="mapel-nama" required class="w-full h-10 px-3 rounded-lg border border-border text-sm" placeholder="Matematika">
+      </div>
+      <div id="mapel-error" class="hidden p-3 rounded-lg bg-red-50 text-sm text-danger"></div>
+      <div class="flex justify-end gap-2 pt-2">
+        <button type="button" onclick="App.closeModal('modal-mapel')" class="h-10 px-4 rounded-lg border text-sm font-semibold">Batal</button>
+        <button type="submit" class="h-10 px-4 rounded-lg bg-primary text-white text-sm font-semibold">Simpan</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+let allMapel = [];
+
+async function loadMapel() {
+  App.showSkeleton('mapel-tbody', 3);
+  try {
+    const res = await App.callApi('apiReadAll', App.getToken(), 'master_mapel');
+    allMapel = res.data || [];
+    renderMapel();
+  } catch (err) { 
+    document.getElementById('mapel-tbody').innerHTML = `<tr><td colspan="3" class="p-8 text-center text-danger">${err.message}</td></tr>`; 
+  }
+}
+
+function renderMapel() {
+  const tbody = document.getElementById('mapel-tbody');
+  const q = document.getElementById('search-mapel').value.toLowerCase();
+
+  const filtered = allMapel.filter(m => 
+    String(m.kode_mapel).toLowerCase().includes(q) || 
+    String(m.nama_mapel).toLowerCase().includes(q)
+  );
+
+  document.getElementById('row-count-mapel').textContent = `Total: ${filtered.length} Data`;
+
+  if (filtered.length === 0) {
+    return tbody.innerHTML = `<tr><td colspan="3" class="p-8 text-center text-text-muted">Belum ada data mapel atau tidak ditemukan</td></tr>`;
+  }
+
+  tbody.innerHTML = filtered.map(m => `
+    <tr class="border-b hover:bg-bg-page/50">
+      <td class="px-4 py-3 font-mono font-bold text-primary">${App.escapeHtml(m.kode_mapel)}</td>
+      <td class="px-4 py-3 font-semibold">${App.escapeHtml(m.nama_mapel)}</td>
+      <td class="px-4 py-3 text-center">
+        <button onclick='editMapel(${JSON.stringify(m).replace(/'/g, "&#39;")})' class="text-primary hover:underline text-xs font-bold mr-2">Edit</button>
+        <button onclick="hapusMapel('${m.mapel_id}')" class="text-danger hover:underline text-xs font-bold">Hapus</button>
+      </td>
+    </tr>
+  `).join('');
+}
+
+function openMapelModal() {
+  document.getElementById('form-mapel').reset();
+  document.getElementById('mapel-id').value = '';
+  document.getElementById('modal-mapel-title').textContent = 'Tambah Mapel';
+  document.getElementById('mapel-error').classList.add('hidden');
+  App.openModal('modal-mapel');
+}
+
+function editMapel(data) {
+  document.getElementById('mapel-id').value = data.mapel_id;
+  document.getElementById('mapel-kode').value = data.kode_mapel;
+  document.getElementById('mapel-nama').value = data.nama_mapel;
+  document.getElementById('modal-mapel-title').textContent = 'Edit Mapel';
+  document.getElementById('mapel-error').classList.add('hidden');
+  App.openModal('modal-mapel');
+}
+
+async function handleSaveMapel(e) {
+  e.preventDefault();
+  const btn = e.target.querySelector('button[type="submit"]'); btn.disabled = true; btn.textContent = 'Menyimpan...';
+  const payload = Object.fromEntries(new FormData(e.target).entries());
+  
+  if (!payload.mapel_id) {
+    payload.mapel_id = 'MPL-' + Date.now();
+  }
+
+  try {
+    if (document.getElementById('mapel-id').value !== '') {
+      await App.callApi('apiUpdate', App.getToken(), 'master_mapel', payload.mapel_id, payload);
+    } else {
+      await App.callApi('apiCreate', App.getToken(), 'master_mapel', payload);
+    }
+    App.closeModal('modal-mapel'); 
+    App.toast('Data mapel disimpan', 'success'); 
+    loadMapel();
+  } catch (err) {
+    document.getElementById('mapel-error').textContent = err.message; 
+    document.getElementById('mapel-error').classList.remove('hidden');
+  } finally { 
+    btn.disabled = false; btn.textContent = 'Simpan'; 
+  }
+}
+
+async function hapusMapel(id) {
+  if (!confirm('Hapus mapel ini?')) return;
+  try { 
+    await App.callApi('apiDelete', App.getToken(), 'master_mapel', id); 
+    App.toast('Mapel dihapus', 'info'); 
+    loadMapel(); 
+  }
+  catch (err) { App.toast(err.message, 'error'); }
+}
+
+document.addEventListener('DOMContentLoaded', loadMapel);
+</script>

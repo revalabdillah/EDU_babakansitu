@@ -1,0 +1,252 @@
+<div class="space-y-6">
+  <div class="flex items-center justify-between flex-wrap gap-3">
+    <div>
+      <h1 class="text-2xl font-bold">Jurnal KBM Hari Ini</h1>
+      <p class="text-sm text-text-muted mt-1"><?= new Date().toLocaleDateString('id-ID', {weekday:'long', day:'numeric', month:'long', year:'numeric'}) ?></p>
+    </div>
+    <button onclick="loadJadwal()" class="h-10 px-4 rounded-lg border font-semibold text-sm flex items-center gap-2 hover:bg-bg-page">
+      <span class="material-symbols-outlined">refresh</span> Refresh
+    </button>
+  </div>
+
+  <div id="jadwal-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+    <div class="skeleton h-48 rounded-xl"></div>
+    <div class="skeleton h-48 rounded-xl"></div>
+  </div>
+</div>
+
+<!-- MODAL SMARTBOARD VIEW -->
+<div id="modal-smartboard" class="hidden fixed inset-0 z-50 bg-[#0F172A] flex flex-col text-white">
+  <!-- Top Bar -->
+  <div class="h-16 px-6 bg-[#1E293B] flex items-center justify-between border-b border-gray-700 flex-shrink-0">
+    <div class="flex items-center gap-4">
+      <button onclick="App.closeModal('modal-smartboard')" class="w-12 h-12 rounded-xl bg-gray-700 hover:bg-gray-600 flex items-center justify-center">
+        <span class="material-symbols-outlined text-2xl">arrow_back</span>
+      </button>
+      <div>
+        <h2 class="text-xl font-bold" id="sb-kelas">Kelas 1-A</h2>
+        <p class="text-sm text-gray-400" id="sb-ruangan">Lab Komputer · 08:00 - 09:30</p>
+      </div>
+    </div>
+    <div class="flex gap-2">
+      <button onclick="togglePresensi()" class="h-12 px-6 rounded-xl bg-blue-600 hover:bg-blue-500 font-semibold flex items-center gap-2">
+        <span class="material-symbols-outlined">how_to_reg</span> Isi Presensi
+      </button>
+      <button onclick="saveJurnal()" id="btn-save-jurnal" class="h-12 px-6 rounded-xl bg-green-600 hover:bg-green-500 font-semibold flex items-center gap-2">
+        <span class="material-symbols-outlined">save</span> Simpan Jurnal
+      </button>
+    </div>
+  </div>
+
+  <div class="flex-1 flex overflow-hidden">
+    <!-- Game Area (Kiri - 65%) -->
+    <div class="w-[65%] p-4 bg-[#0F172A] flex flex-col">
+      <div class="flex-1 bg-white rounded-2xl overflow-hidden relative shadow-2xl border-4 border-gray-700">
+        <div id="game-placeholder" class="absolute inset-0 flex items-center justify-center text-gray-500 font-bold text-xl">
+          Tidak ada Game HTML dijadwalkan untuk sesi ini.
+        </div>
+        <iframe id="game-iframe" class="w-full h-full relative z-10 hidden" sandbox="allow-scripts allow-same-origin allow-forms"></iframe>
+      </div>
+    </div>
+
+    <!-- Jurnal & Presensi (Kanan - 35%) -->
+    <div class="w-[35%] bg-[#1E293B] border-l border-gray-700 flex flex-col">
+      <!-- Tabs -->
+      <div class="flex border-b border-gray-700">
+        <button id="tab-jurnal-btn" onclick="switchTab('jurnal')" class="flex-1 py-3 text-center font-bold text-blue-400 border-b-2 border-blue-400">Jurnal</button>
+        <button id="tab-presensi-btn" onclick="switchTab('presensi')" class="flex-1 py-3 text-center font-bold text-gray-400 hover:text-white">Presensi</button>
+      </div>
+
+      <!-- Jurnal Panel -->
+      <div id="tab-jurnal" class="flex-1 p-4 flex flex-col gap-3 overflow-y-auto">
+        <div>
+          <label class="block text-sm text-gray-400 mb-1">Materi Pembahasan</label>
+          <textarea id="input-materi" class="w-full h-32 bg-[#0F172A] border border-gray-600 rounded-xl p-3 text-white focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Jelaskan materi hari ini..."></textarea>
+        </div>
+        <div>
+          <label class="block text-sm text-gray-400 mb-1">Catatan Hambatan (Opsional)</label>
+          <textarea id="input-catatan" class="w-full h-24 bg-[#0F172A] border border-gray-600 rounded-xl p-3 text-white focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Kendala saat KBM..."></textarea>
+        </div>
+      </div>
+
+      <!-- Presensi Panel -->
+      <div id="tab-presensi" class="hidden flex-1 p-4 flex flex-col gap-3 overflow-y-auto">
+        <div id="presensi-list" class="space-y-2"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+let jadwalData = [];
+let activeReservasi = null;
+let siswaList = [];
+let presensiState = {}; // { siswa_id: 'HADIR'|'IZIN'|'SAKIT'|'ALPA' }
+
+document.addEventListener('DOMContentLoaded', loadJadwal);
+
+async function loadJadwal() {
+  const container = document.getElementById('jadwal-container');
+  try {
+    const res = await App.callApi('apiGetJadwalHariIni', App.getToken());
+    jadwalData = res.data.jadwal || [];
+    
+    if (jadwalData.length === 0) {
+      container.innerHTML = `<div class="col-span-full p-8 text-center text-text-muted bg-white rounded-xl border border-border">Tidak ada jadwal KBM untuk hari ini.</div>`;
+      return;
+    }
+
+    container.innerHTML = jadwalData.map((j, idx) => `
+      <div class="bg-white rounded-xl border border-border p-5 shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between">
+        <div>
+          <div class="flex justify-between items-start mb-3">
+            <span class="px-3 py-1 bg-primary-50 text-primary font-mono text-sm font-bold rounded-lg">${App.formatTime(j.jam_mulai)} - ${App.formatTime(j.jam_selesai)}</span>
+            ${j.jurnal_id ? '<span class="px-2 py-0.5 bg-green-100 text-green-700 text-xs font-bold rounded-full">Jurnal Terisi</span>' : '<span class="px-2 py-0.5 bg-amber-100 text-amber-700 text-xs font-bold rounded-full">Belum Diisi</span>'}
+          </div>
+          <h3 class="text-xl font-bold">${App.escapeHtml(j.nama_kelas)}</h3>
+          <p class="text-sm text-text-muted mt-1"><span class="material-symbols-outlined text-[14px] align-middle">tv_gen</span> ${App.escapeHtml(j.nama_ruangan)}</p>
+          ${j.game_id ? `<p class="text-sm text-tertiary font-semibold mt-2"><span class="material-symbols-outlined text-[14px] align-middle">sports_esports</span> Game Terlampir</p>` : ''}
+        </div>
+        <button onclick="openSmartboard(${idx})" class="mt-4 w-full h-11 rounded-lg bg-primary hover:bg-primary-600 text-white font-bold flex items-center justify-center gap-2">
+          <span class="material-symbols-outlined text-[20px]">cast_for_education</span> Buka Sesi KBM
+        </button>
+      </div>
+    `).join('');
+  } catch (err) {
+    container.innerHTML = `<div class="col-span-full p-8 text-center text-danger">Gagal memuat jadwal: ${err.message}</div>`;
+  }
+}
+
+async function openSmartboard(index) {
+  activeReservasi = jadwalData[index];
+  
+  // Set header
+  document.getElementById('sb-kelas').textContent = activeReservasi.nama_kelas;
+  document.getElementById('sb-ruangan').textContent = `${activeReservasi.nama_ruangan} · ${App.formatTime(activeReservasi.jam_mulai)} - ${App.formatTime(activeReservasi.jam_selesai)}`;
+  document.getElementById('input-materi').value = activeReservasi.materi || '';
+  document.getElementById('input-catatan').value = activeReservasi.catatan || '';
+
+  // Setup Game Iframe
+  const iframe = document.getElementById('game-iframe');
+  const placeholder = document.getElementById('game-placeholder');
+  if (activeReservasi.game_html) {
+    placeholder.classList.add('hidden');
+    iframe.classList.remove('hidden');
+    iframe.srcdoc = activeReservasi.game_html;
+  } else {
+    placeholder.classList.remove('hidden');
+    iframe.classList.add('hidden');
+    iframe.srcdoc = '';
+  }
+
+  // Load Siswa untuk Presensi
+  presensiState = {};
+  const presensiList = document.getElementById('presensi-list');
+  presensiList.innerHTML = `<div class="text-center text-gray-500">Memuat siswa...</div>`;
+  switchTab('jurnal'); // Default tab
+  
+  App.openModal('modal-smartboard');
+
+  try {
+    const resSiswa = await App.callApi('apiGetSiswaByKelas', App.getToken(), activeReservasi.kelas_id);
+    siswaList = resSiswa.data || [];
+    
+    if (siswaList.length === 0) {
+      presensiList.innerHTML = `<div class="text-center text-gray-500">Tidak ada siswa aktif di kelas ini.</div>`;
+      return;
+    }
+
+    // Set default state ke HADIR
+    siswaList.forEach(s => presensiState[s.siswa_id] = 'HADIR');
+
+    presensiList.innerHTML = siswaList.map(s => `
+      <div class="bg-[#0F172A] p-3 rounded-xl flex items-center justify-between border border-gray-700">
+        <div class="font-semibold text-sm">${App.escapeHtml(s.nama_siswa)}</div>
+        <div class="flex gap-1">
+          ${['HADIR', 'IZIN', 'SAKIT', 'ALPA'].map(st => `
+            <button onclick="setPresensi('${s.siswa_id}', '${st}', this)" class="w-10 h-10 rounded-lg font-bold text-xs border border-gray-600 presensi-btn-${s.siswa_id} ${st === 'HADIR' ? 'bg-green-600 text-white border-green-500' : 'text-gray-400 hover:bg-gray-800'}">
+              ${st.charAt(0)}
+            </button>
+          `).join('')}
+        </div>
+      </div>
+    `).join('');
+  } catch (err) {
+    presensiList.innerHTML = `<div class="text-center text-red-500">Gagal memuat siswa.</div>`;
+  }
+}
+
+function switchTab(tab) {
+  const btnJurnal = document.getElementById('tab-jurnal-btn');
+  const btnPresensi = document.getElementById('tab-presensi-btn');
+  const panelJurnal = document.getElementById('tab-jurnal');
+  const panelPresensi = document.getElementById('tab-presensi');
+
+  if (tab === 'jurnal') {
+    btnJurnal.className = 'flex-1 py-3 text-center font-bold text-blue-400 border-b-2 border-blue-400';
+    btnPresensi.className = 'flex-1 py-3 text-center font-bold text-gray-400 hover:text-white';
+    panelJurnal.classList.remove('hidden');
+    panelPresensi.classList.add('hidden');
+  } else {
+    btnPresensi.className = 'flex-1 py-3 text-center font-bold text-blue-400 border-b-2 border-blue-400';
+    btnJurnal.className = 'flex-1 py-3 text-center font-bold text-gray-400 hover:text-white';
+    panelPresensi.classList.remove('hidden');
+    panelJurnal.classList.add('hidden');
+  }
+}
+
+function togglePresensi() {
+  switchTab('presensi');
+}
+
+function setPresensi(siswaId, status, btnElement) {
+  presensiState[siswaId] = status;
+  
+  // Reset semua button di baris ini
+  const buttons = btnElement.parentElement.querySelectorAll('button');
+  buttons.forEach(b => {
+    b.className = b.className.replace('bg-green-600 text-white border-green-500', 'text-gray-400 hover:bg-gray-800');
+    b.className = b.className.replace('bg-amber-500 text-white border-amber-400', 'text-gray-400 hover:bg-gray-800');
+    b.className = b.className.replace('bg-blue-500 text-white border-blue-400', 'text-gray-400 hover:bg-gray-800');
+    b.className = b.className.replace('bg-red-600 text-white border-red-500', 'text-gray-400 hover:bg-gray-800');
+  });
+
+  // Set warna untuk tombol yang aktif
+  let activeClass = 'bg-green-600 text-white border-green-500';
+  if (status === 'IZIN') activeClass = 'bg-blue-500 text-white border-blue-400';
+  if (status === 'SAKIT') activeClass = 'bg-amber-500 text-white border-amber-400';
+  if (status === 'ALPA') activeClass = 'bg-red-600 text-white border-red-500';
+  
+  btnElement.className = btnElement.className.replace('text-gray-400 hover:bg-gray-800', activeClass);
+}
+
+async function saveJurnal() {
+  if (!activeReservasi) return;
+  const btn = document.getElementById('btn-save-jurnal');
+  btn.disabled = true;
+  btn.innerHTML = `<span class="material-symbols-outlined animate-spin">refresh</span> Menyimpan...`;
+
+  const payload = {
+    reservasi_id: activeReservasi.reservasi_id,
+    kelas_id: activeReservasi.kelas_id,
+    materi: document.getElementById('input-materi').value,
+    catatan: document.getElementById('input-catatan').value,
+    presensi: Object.keys(presensiState).map(sid => ({
+      siswa_id: sid,
+      status_kehadiran: presensiState[sid]
+    }))
+  };
+
+  try {
+    await App.callApi('apiSaveJurnal', App.getToken(), payload);
+    App.toast('Jurnal & Presensi berhasil disimpan!', 'success');
+    App.closeModal('modal-smartboard');
+    loadJadwal(); // Refresh list
+  } catch (err) {
+    App.toast(err.message || 'Gagal menyimpan jurnal', 'error');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = `<span class="material-symbols-outlined">save</span> Simpan Jurnal`;
+  }
+}
+</script>

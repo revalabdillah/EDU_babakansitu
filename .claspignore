@@ -1,5 +1,8 @@
+
 **/**
 !appsscript.json
+!Code.js
 !Code.gs
 !backend/**/*.gs
 !ui/**/*.html
+'@ | Set-Content -Path .claspignore -Encoding UTF8 -NoNewline

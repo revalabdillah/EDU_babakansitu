@@ -1,0 +1,273 @@
+<!-- Library Chart.js untuk Diagram -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<div class="space-y-6">
+  <!-- Header & Filter -->
+  <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <div>
+      <h1 class="text-2xl font-bold">Presensi Siswa</h1>
+      <p class="text-sm text-text-muted mt-1">Input kehadiran harian & lihat rekap</p>
+    </div>
+    
+    <div class="flex flex-wrap gap-2">
+      <select id="filter-kelas" onchange="loadDataPresensi()" class="h-10 px-3 rounded-lg border border-border text-sm bg-white min-w-[150px] cursor-pointer">
+        <option value="">-- Pilih Kelas --</option>
+      </select>
+      <input type="date" id="input-tanggal" onchange="loadDataPresensi()" class="h-10 px-3 rounded-lg border border-border text-sm bg-white">
+    </div>
+  </div>
+
+  <div id="presensi-content" class="hidden space-y-6">
+    
+    <!-- Tab Navigation -->
+    <div class="flex gap-2 border-b border-border">
+      <button id="tab-input-btn" onclick="switchTab('input')" class="px-4 py-2 font-bold text-primary border-b-2 border-primary">Input Harian</button>
+      <button id="tab-rekap-btn" onclick="switchTab('rekap')" class="px-4 py-2 font-bold text-gray-500 hover:text-gray-700">Rekap & Grafik</button>
+    </div>
+
+    <!-- PANEL INPUT HARIAN -->
+    <div id="panel-input" class="bg-white rounded-xl border border-border overflow-hidden">
+      <div class="p-4 bg-gray-50 border-b border-border flex justify-between items-center">
+        <div class="font-bold text-gray-700">Daftar Siswa</div>
+        <button onclick="setSemuaHadir()" class="text-xs font-bold bg-primary-50 text-primary px-3 py-1.5 rounded-lg hover:bg-primary-100">Tandai Semua Hadir</button>
+      </div>
+      <div id="list-siswa" class="divide-y divide-border"></div>
+      <div class="p-4 border-t border-border bg-gray-50 text-right">
+        <button onclick="simpanPresensi()" id="btn-simpan" class="h-10 px-6 rounded-lg bg-primary text-white font-semibold shadow-sm hover:bg-primary-600">
+          Simpan Presensi
+        </button>
+      </div>
+    </div>
+
+    <!-- PANEL REKAP & GRAFIK -->
+    <div id="panel-rekap" class="hidden space-y-6">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <!-- Doughnut Chart -->
+        <div class="bg-white p-5 rounded-xl border border-border shadow-sm">
+          <h3 class="font-bold mb-4 text-center">Total Kehadiran Bulan Ini</h3>
+          <div class="relative h-64"><canvas id="chart-doughnut"></canvas></div>
+        </div>
+        <!-- Bar Chart -->
+        <div class="bg-white p-5 rounded-xl border border-border shadow-sm">
+          <h3 class="font-bold mb-4 text-center">Tren Harian (7 Hari Terakhir)</h3>
+          <div class="relative h-64"><canvas id="chart-bar"></canvas></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+let listKelas = [];
+let siswaData = [];
+let currentStatus = {}; // Menyimpan status sementara sebelum disimpan
+
+async function initPresensi() {
+  try {
+    let res;
+    
+    // 👇 Jika GURU, ambil kelas yang diampu saja. Jika ADMIN, ambil semua. 👇
+    if (window.__USER__.role === 'GURU') {
+      res = await App.callApi('apiGetGuruClasses', App.getToken());
+    } else {
+      res = await App.callApi('apiReadAll', App.getToken(), 'master_kelas');
+    }
+    
+    listKelas = res.data || [];
+    
+    if (listKelas.length === 0) {
+      document.getElementById('filter-kelas').innerHTML = '<option value="">Belum ada pemetaan kelas</option>';
+      App.toast('Anda belum di-mapping mengajar di kelas manapun.', 'warning');
+      return;
+    }
+    
+    document.getElementById('filter-kelas').innerHTML = '<option value="">-- Pilih Kelas --</option>' + 
+      listKelas.map(k => `<option value="${k.kelas_id}">${k.nama_kelas}</option>`).join('');
+      
+    document.getElementById('input-tanggal').valueAsDate = new Date();
+  } catch (e) {
+    App.toast('Gagal memuat kelas: ' + e.message, 'error');
+  }
+}
+
+
+async function loadDataPresensi() {
+  const kelasId = document.getElementById('filter-kelas').value;
+  const tanggal = document.getElementById('input-tanggal').value;
+  
+  if (!kelasId || !tanggal) {
+    document.getElementById('presensi-content').classList.add('hidden');
+    return;
+  }
+  
+  document.getElementById('presensi-content').classList.remove('hidden');
+  document.getElementById('list-siswa').innerHTML = '<div class="p-8 text-center text-gray-500">Memuat data siswa...</div>';
+
+  try {
+    const res = await App.callApi('apiGetSiswaUntukPresensi', App.getToken(), kelasId);
+    siswaData = res.data || [];
+    currentStatus = {}; // Reset
+    
+    // Default semua ke HADIR
+    siswaData.forEach(s => currentStatus[s.siswa_id] = 'HADIR');
+    
+    renderListSiswa();
+  } catch (e) {
+    document.getElementById('list-siswa').innerHTML = `<div class="p-8 text-center text-danger">${e.message}</div>`;
+  }
+}
+
+function renderListSiswa() {
+  const container = document.getElementById('list-siswa');
+  if (siswaData.length === 0) {
+    container.innerHTML = '<div class="p-8 text-center text-gray-500">Tidak ada siswa aktif di kelas ini.</div>';
+    return;
+  }
+
+  container.innerHTML = siswaData.map(s => `
+    <div class="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-gray-50">
+      <div>
+        <div class="font-bold text-gray-800">${App.escapeHtml(s.nama_siswa)}</div>
+        <div class="text-xs text-gray-500 font-mono">${App.escapeHtml(s.nisn)}</div>
+      </div>
+      <div class="flex gap-1">
+        <button onclick="setStatus('${s.siswa_id}', 'HADIR', this)" class="status-btn-${s.siswa_id} w-12 h-10 rounded-lg font-bold text-sm border transition-colors ${currentStatus[s.siswa_id] === 'HADIR' ? 'bg-green-600 text-white border-green-700' : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-100'}">H</button>
+        <button onclick="setStatus('${s.siswa_id}', 'IZIN', this)" class="status-btn-${s.siswa_id} w-12 h-10 rounded-lg font-bold text-sm border transition-colors ${currentStatus[s.siswa_id] === 'IZIN' ? 'bg-blue-500 text-white border-blue-600' : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-100'}">I</button>
+        <button onclick="setStatus('${s.siswa_id}', 'SAKIT', this)" class="status-btn-${s.siswa_id} w-12 h-10 rounded-lg font-bold text-sm border transition-colors ${currentStatus[s.siswa_id] === 'SAKIT' ? 'bg-amber-500 text-white border-amber-600' : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-100'}">S</button>
+        <button onclick="setStatus('${s.siswa_id}', 'ALPA', this)" class="status-btn-${s.siswa_id} w-12 h-10 rounded-lg font-bold text-sm border transition-colors ${currentStatus[s.siswa_id] === 'ALPA' ? 'bg-red-600 text-white border-red-700' : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-100'}">A</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function setStatus(siswaId, status, btnEl) {
+  currentStatus[siswaId] = status;
+  
+  // Reset warna semua tombol di baris ini
+  const buttons = btnEl.parentElement.querySelectorAll('button');
+  buttons.forEach(b => {
+    b.className = b.className.replace(/bg-(green|blue|amber|red)-[0-9]{3} text-white border-[a-z]+-[0-9]{3}/g, 'bg-white text-gray-600 border-gray-300 hover:bg-gray-100');
+  });
+
+  // Warnai tombol yang dipilih
+  let activeClass = '';
+  if (status === 'HADIR') activeClass = 'bg-green-600 text-white border-green-700';
+  if (status === 'IZIN') activeClass = 'bg-blue-500 text-white border-blue-600';
+  if (status === 'SAKIT') activeClass = 'bg-amber-500 text-white border-amber-600';
+  if (status === 'ALPA') activeClass = 'bg-red-600 text-white border-red-700';
+  
+  btnEl.className = btnEl.className.replace('bg-white text-gray-600 border-gray-300 hover:bg-gray-100', activeClass);
+}
+
+function setSemuaHadir() {
+  siswaData.forEach(s => currentStatus[s.siswa_id] = 'HADIR');
+  renderListSiswa();
+}
+
+async function simpanPresensi() {
+  const kelasId = document.getElementById('filter-kelas').value;
+  const tanggal = document.getElementById('input-tanggal').value;
+  const btn = document.getElementById('btn-simpan');
+  
+  const payload = {
+    kelas_id: kelasId,
+    tanggal: tanggal,
+    data_presensi: Object.keys(currentStatus).map(sid => ({
+      siswa_id: sid,
+      status_kehadiran: currentStatus[sid]
+    }))
+  };
+
+  // Tampilkan layar loading
+  App.showLoading('Menyimpan presensi siswa...');
+  btn.disabled = true; 
+
+  try {
+    await App.callApi('apiSavePresensi', App.getToken(), payload);
+    App.toast('Presensi berhasil disimpan!', 'success');
+  } catch (e) {
+    App.toast(e.message, 'error');
+  } finally {
+    // Sembunyikan layar loading apapun hasilnya
+    App.hideLoading();
+    btn.disabled = false; 
+  }
+}
+
+// --- REKAP & GRAFIK ---
+function switchTab(tab) {
+  const panelInput = document.getElementById('panel-input');
+  const panelRekap = document.getElementById('panel-rekap');
+  const btnInput = document.getElementById('tab-input-btn');
+  const btnRekap = document.getElementById('tab-rekap-btn');
+
+  if (tab === 'input') {
+    panelInput.classList.remove('hidden');
+    panelRekap.classList.add('hidden');
+    btnInput.className = 'px-4 py-2 font-bold text-primary border-b-2 border-primary';
+    btnRekap.className = 'px-4 py-2 font-bold text-gray-500 hover:text-gray-700';
+  } else {
+    panelInput.classList.add('hidden');
+    panelRekap.classList.remove('hidden');
+    btnRekap.className = 'px-4 py-2 font-bold text-primary border-b-2 border-primary';
+    btnInput.className = 'px-4 py-2 font-bold text-gray-500 hover:text-gray-700';
+    loadRekapGrafik();
+  }
+}
+
+let chartDoughnutInstance = null;
+let chartBarInstance = null;
+
+async function loadRekapGrafik() {
+  const kelasId = document.getElementById('filter-kelas').value;
+  const tgl = new Date(document.getElementById('input-tanggal').value);
+  const bulan = tgl.getMonth() + 1;
+  const tahun = tgl.getFullYear();
+
+  try {
+    const res = await App.callApi('apiGetRekapPresensi', App.getToken(), kelasId, bulan, tahun);
+    const { summary, chartData } = res.data;
+
+    // 1. Render Doughnut
+    const ctxDoughnut = document.getElementById('chart-doughnut').getContext('2d');
+    if (chartDoughnutInstance) chartDoughnutInstance.destroy();
+    chartDoughnutInstance = new Chart(ctxDoughnut, {
+      type: 'doughnut',
+      data: {
+        labels: ['Hadir', 'Izin', 'Sakit', 'Alpa'],
+        datasets: [{
+          data: [summary.HADIR, summary.IZIN, summary.SAKIT, summary.ALPA],
+          backgroundColor: ['#10B981', '#3B82F6', '#F59E0B', '#EF4444'],
+          borderWidth: 0
+        }]
+      },
+      options: { cutout: '70%', plugins: { legend: { position: 'bottom' } } }
+    });
+
+    // 2. Render Bar Chart (Tren Harian)
+    const labels = Object.keys(chartData).sort();
+    const dataHadir = labels.map(l => chartData[l].HADIR);
+    const dataAlpa = labels.map(l => chartData[l].ALPA);
+
+    const ctxBar = document.getElementById('chart-bar').getContext('2d');
+    if (chartBarInstance) chartBarInstance.destroy();
+    chartBarInstance = new Chart(ctxBar, {
+      type: 'bar',
+      data: {
+        labels: labels.map(l => l.split('-')[2]), // Ambil tanggalnya saja (01, 02)
+        datasets: [
+          { label: 'Hadir', data: dataHadir, backgroundColor: '#10B981', borderRadius: 4 },
+          { label: 'Alpa', data: dataAlpa, backgroundColor: '#EF4444', borderRadius: 4 }
+        ]
+      },
+      options: { responsive: true, plugins: { legend: { position: 'bottom' } }, scales: { x: { stacked: true }, y: { stacked: true } } }
+    });
+
+  } catch (e) {
+    App.toast('Gagal memuat rekap: ' + e.message, 'error');
+  }
+}
+
+document.addEventListener('DOMContentLoaded', initPresensi);
+</script>

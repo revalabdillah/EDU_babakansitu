@@ -1,0 +1,45 @@
+<div class="space-y-4">
+  <div>
+    <h1 class="text-2xl font-bold">Log Aktivitas</h1>
+    <p class="text-sm text-text-muted mt-1">Riwayat perubahan data & aksi pengguna</p>
+  </div>
+
+  <div class="bg-white rounded-xl border border-border overflow-hidden">
+    <div class="p-4 border-b flex justify-between items-center">
+      <input type="text" placeholder="Cari log..." class="h-10 px-3 rounded-lg border border-border text-sm w-64">
+      <button class="h-10 px-4 rounded-lg border text-sm font-semibold flex items-center gap-2">
+        <span class="material-symbols-outlined text-[18px]">download</span> Ekspor CSV
+      </button>
+    </div>
+    <table class="w-full text-sm">
+      <thead class="bg-bg-page border-b border-border">
+        <tr>
+          <th class="text-left px-4 py-3 text-xs font-bold text-text-muted uppercase">Waktu</th>
+          <th class="text-left px-4 py-3 text-xs font-bold text-text-muted uppercase">Pengguna</th>
+          <th class="text-left px-4 py-3 text-xs font-bold text-text-muted uppercase">Aksi</th>
+          <th class="text-left px-4 py-3 text-xs font-bold text-text-muted uppercase">Keterangan</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="border-b hover:bg-bg-page/50">
+          <td class="px-4 py-3 font-mono text-xs text-text-muted">31 Okt 2026, 10:00</td>
+          <td class="px-4 py-3 font-semibold">Administrator</td>
+          <td class="px-4 py-3"><span class="px-2 py-0.5 rounded-full text-xs font-bold bg-blue-100 text-blue-700">LOGIN</span></td>
+          <td class="px-4 py-3">Berhasil masuk ke sistem.</td>
+        </tr>
+        <tr class="border-b hover:bg-bg-page/50">
+          <td class="px-4 py-3 font-mono text-xs text-text-muted">31 Okt 2026, 10:05</td>
+          <td class="px-4 py-3 font-semibold">Administrator</td>
+          <td class="px-4 py-3"><span class="px-2 py-0.5 rounded-full text-xs font-bold bg-green-100 text-green-700">CREATE</span></td>
+          <td class="px-4 py-3">Menambahkan Guru baru: "reval".</td>
+        </tr>
+        <tr class="border-b hover:bg-bg-page/50">
+          <td class="px-4 py-3 font-mono text-xs text-text-muted">31 Okt 2026, 10:15</td>
+          <td class="px-4 py-3 font-semibold">Administrator</td>
+          <td class="px-4 py-3"><span class="px-2 py-0.5 rounded-full text-xs font-bold bg-red-100 text-red-700">DELETE</span></td>
+          <td class="px-4 py-3">Menghapus Kelas "Kelas 1-B".</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>

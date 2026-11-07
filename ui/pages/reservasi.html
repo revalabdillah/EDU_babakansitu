@@ -1,0 +1,347 @@
+<div class="space-y-4 h-[calc(100vh-120px)] flex flex-col">
+  <!-- Header & Controls -->
+  <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 shrink-0">
+    <div>
+      <h1 class="text-2xl font-bold">Jadwal Harian</h1>
+      <p class="text-sm text-text-muted mt-1">Pilih tanggal untuk melihat ketersediaan Smartboard</p>
+    </div>
+    
+    <!-- Toolbar Navigasi Tanggal -->
+    <div class="flex flex-wrap items-center gap-2">
+      <div class="flex items-center bg-white border border-border rounded-lg shadow-sm">
+        <button onclick="changeDay(-1)" class="w-10 h-10 flex items-center justify-center hover:bg-gray-50 rounded-l-lg border-r border-border">
+          <span class="material-symbols-outlined text-[20px]">chevron_left</span>
+        </button>
+        <input type="date" id="input-view-date" onchange="loadDailySchedule()" class="h-10 px-3 border-none focus:ring-0 text-sm font-semibold text-gray-700 bg-transparent cursor-pointer">
+        <button onclick="changeDay(1)" class="w-10 h-10 flex items-center justify-center hover:bg-gray-50 rounded-r-lg border-l border-border">
+          <span class="material-symbols-outlined text-[20px]">chevron_right</span>
+        </button>
+      </div>
+      
+      <button onclick="goToToday()" class="h-10 px-4 rounded-lg bg-white border border-border text-gray-700 font-semibold text-sm hover:bg-gray-50 shadow-sm">
+        Hari Ini
+      </button>
+
+      <button onclick="openBookingModal()" class="h-10 px-4 rounded-lg bg-primary text-white font-semibold text-sm flex items-center gap-2 shadow-sm">
+        <span class="material-symbols-outlined text-[20px]">add</span> Reservasi Baru
+      </button>
+    </div>
+  </div>
+
+  <!-- Timeline Grid -->
+  <div class="bg-white rounded-2xl border border-border shadow-sm flex-1 overflow-auto relative">
+    <table class="w-full text-sm border-collapse relative">
+      <thead id="table-header" class="sticky top-0 z-20 bg-gray-50 shadow-sm">
+        <!-- Diisi oleh JS: Kolom Waktu + Nama Ruangan -->
+      </thead>
+      <tbody id="table-body">
+        <!-- Diisi oleh JS: Baris per Jam -->
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- MODAL BOOKING -->
+<div id="modal-reservasi" class="hidden fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+  <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg fade-in">
+    <div class="p-6 border-b border-border flex justify-between items-center bg-indigo-50">
+      <h2 class="text-lg font-bold text-indigo-900">Form Reservasi</h2>
+      <button onclick="App.closeModal('modal-reservasi')" class="w-8 h-8 rounded-lg hover:bg-indigo-100 flex items-center justify-center text-indigo-700"><span class="material-symbols-outlined">close</span></button>
+    </div>
+    
+    <form id="form-reservasi" onsubmit="handleSaveReservasi(event)" class="p-6 space-y-4">
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <label class="block text-sm font-semibold mb-1.5">Ruangan *</label>
+          <select name="papan_id" id="select-papan" required class="w-full h-10 px-3 rounded-lg border border-border text-sm"></select>
+        </div>
+        <div>
+          <label class="block text-sm font-semibold mb-1.5">Kelas *</label>
+          <select name="kelas_id" id="select-kelas" required class="w-full h-10 px-3 rounded-lg border border-border text-sm"></select>
+        </div>
+      </div>
+      <div>
+        <label class="block text-sm font-semibold mb-1.5">Tanggal KBM *</label>
+        <input type="date" name="tanggal_pinjam" id="input-tanggal" required class="w-full h-10 px-3 rounded-lg border border-border text-sm bg-gray-50">
+      </div>
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <label class="block text-sm font-semibold mb-1.5">Jam Mulai *</label>
+          <input type="time" name="jam_mulai" id="input-jam-mulai" required class="w-full h-10 px-3 rounded-lg border border-border text-sm">
+        </div>
+        <div>
+          <label class="block text-sm font-semibold mb-1.5">Jam Selesai *</label>
+          <input type="time" name="jam_selesai" id="input-jam-selesai" required class="w-full h-10 px-3 rounded-lg border border-border text-sm">
+        </div>
+      </div>
+      <div id="reservasi-error" class="hidden p-3 rounded-lg bg-red-50 text-sm text-danger"></div>
+      <div class="flex justify-end gap-2 pt-4 border-t border-border">
+        <button type="button" onclick="App.closeModal('modal-reservasi')" class="h-10 px-4 rounded-lg border text-sm font-semibold">Batal</button>
+        <button type="submit" id="btn-submit-reservasi" class="h-10 px-4 rounded-lg bg-primary text-white text-sm font-semibold shadow-sm">Simpan Reservasi</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+let listPapan = [];
+let listKelas = [];
+let currentViewDate = new Date().toISOString().split('T')[0];
+const START_HOUR = 7; // Jam mulai operasional (07:00)
+const END_HOUR = 16;  // Jam selesai operasional (16:00)
+
+// 1. INISIALISASI
+async function init() {
+  document.getElementById('input-view-date').value = currentViewDate;
+  await loadMasterData();
+  await loadDailySchedule();
+}
+
+async function loadMasterData() {
+  try {
+    const [resPapan, resKelas] = await Promise.all([
+      App.callApi('apiReadAll', App.getToken(), 'master_papan_interaktif'),
+      App.callApi('apiGetGuruClasses', App.getToken()) // Ambil kelas yang diampu
+    ]);
+    
+    listPapan = (resPapan.data || []).filter(p => p.status_kondisi === 'BAIK');
+    listKelas = resKelas.data || [];
+    
+    document.getElementById('select-papan').innerHTML = '<option value="">-- Pilih Ruangan --</option>' + 
+      listPapan.map(p => `<option value="${p.papan_id}">${p.nama_perangkat}</option>`).join('');
+      
+    document.getElementById('select-kelas').innerHTML = '<option value="">-- Pilih Kelas --</option>' + 
+      listKelas.map(k => `<option value="${k.kelas_id}">${k.nama_kelas}</option>`).join('');
+  } catch (e) { console.error(e); }
+}
+
+// 2. LOAD JADWAL HARIAN
+async function loadDailySchedule() {
+  currentViewDate = document.getElementById('input-view-date').value;
+  const tbody = document.getElementById('table-body');
+  const thead = document.getElementById('table-header');
+  
+  tbody.innerHTML = '<tr><td colspan="100" class="p-8 text-center text-gray-500">Memuat jadwal...</td></tr>';
+  
+  try {
+    const res = await App.callApi('apiGetCalendarData', App.getToken(), { 
+      start_date: currentViewDate, 
+      end_date: currentViewDate 
+    });
+    const bookings = res.data || [];
+
+    // Header Tabel
+    let headerHtml = '<tr>';
+    headerHtml += '<th class="w-24 p-3 border-b border-r border-border text-center font-bold text-gray-600 bg-gray-50 sticky left-0 z-30">Waktu</th>';
+    
+    listPapan.forEach(papan => {
+      headerHtml += `
+        <th class="p-3 border-b border-r border-border text-center font-bold text-gray-800 bg-white min-w-[150px]">
+          <div class="flex flex-col items-center gap-1">
+            <span class="material-symbols-outlined text-primary text-[20px]">tv_gen</span>
+            <span>${App.escapeHtml(papan.nama_perangkat)}</span>
+            <span class="text-[10px] text-gray-500 font-normal">${App.escapeHtml(papan.lokasi_ruangan)}</span>
+          </div>
+        </th>
+      `;
+    });
+    headerHtml += '</tr>';
+    thead.innerHTML = headerHtml;
+
+    // Baris Tabel
+    let bodyHtml = '';
+    
+    for (let hour = START_HOUR; hour < END_HOUR; hour++) {
+      const timeStr = `${String(hour).padStart(2, '0')}:00`;
+      const hourInMinutes = hour * 60;
+      const nextHourInMinutes = (hour + 1) * 60; // 👈 VARIABEL YANG TADI HILANG SUDAH ADA DI SINI
+      
+      bodyHtml += `<tr>`;
+      bodyHtml += `
+        <td class="p-2 border-b border-r border-border text-center text-xs font-bold text-gray-500 bg-gray-50 sticky left-0 z-10 h-16">
+          ${timeStr}
+        </td>
+      `;
+
+      listPapan.forEach((papan) => {
+        // Cari booking yang waktunya beririsan dengan jam saat ini
+        const booking = bookings.find(b => 
+          b.papan_id === papan.papan_id && 
+          timeToMinutes(b.jam_mulai) < nextHourInMinutes && 
+          timeToMinutes(b.jam_selesai) > hourInMinutes
+        );
+
+        if (booking) {
+          let startHour = Math.floor(timeToMinutes(booking.jam_mulai) / 60);
+          let endHour = Math.ceil(timeToMinutes(booking.jam_selesai) / 60);
+
+          if (startHour < START_HOUR) startHour = START_HOUR;
+          if (endHour > END_HOUR) endHour = END_HOUR;
+
+          const rowspan = endHour - startHour;
+          const isCompleted = booking.status_reservasi === 'COMPLETED';
+
+          // Hanya render jika ini adalah jam MULAI
+          if (hour === startHour) {
+            const color = isCompleted 
+              ? { bg: 'bg-gray-50', text: 'text-gray-700', border: 'border-gray-400', sub: 'text-gray-500' } 
+              : getTeacherColor(booking.guru_id);
+            
+            let contentHtml = '';
+            
+            if (isCompleted) {
+              // TAMPILAN JIKA SELESAI (MENAMPILKAN MATERI)
+              contentHtml = `
+                <div class="text-xs font-bold ${color.text} truncate flex items-center gap-1">
+                  ${App.escapeHtml(booking.kelas_nama)} 
+                  <span class="bg-green-100 text-green-700 text-[9px] px-1.5 py-0.5 rounded-full border border-green-200">SELESAI</span>
+                </div>
+                <div class="text-[10px] text-gray-600 mt-1 italic line-clamp-2">
+                  "${App.escapeHtml(booking.materi_pembahasan || 'Materi tidak dicatat')}"
+                </div>
+                <div class="text-[9px] text-gray-400 mt-1 truncate">
+                  ${App.formatTime(booking.jam_mulai)} - ${App.formatTime(booking.jam_selesai)}
+                </div>
+              `;
+            } else {
+              // TAMPILAN JIKA BELUM SELESAI
+              contentHtml = `
+                <div class="text-xs font-bold ${color.text} truncate">${App.escapeHtml(booking.kelas_nama)}</div>
+                <div class="text-[10px] ${color.sub} font-semibold mt-1 flex items-center gap-1">
+                  <span class="material-symbols-outlined text-[12px]">schedule</span>
+                  ${App.formatTime(booking.jam_mulai)} - ${App.formatTime(booking.jam_selesai)}
+                </div>
+                <div class="text-[10px] text-gray-600 mt-1 truncate">
+                  <span class="font-semibold">Guru:</span> ${App.escapeHtml(booking.guru_nama)}
+                </div>
+              `;
+            }
+            
+            bodyHtml += `
+              <td rowspan="${rowspan}" class="border-b border-r border-border p-1 relative align-top bg-white">
+                <div class="h-full w-full rounded-lg p-2 flex flex-col justify-start border-l-4 ${color.border} ${color.bg} shadow-sm overflow-hidden">
+                  ${contentHtml}
+                </div>
+              </td>
+            `;
+          }
+        } else {
+          // Render kotak kosong
+          bodyHtml += `
+            <td class="border-b border-r border-border p-1 relative group cursor-pointer hover:bg-gray-50 transition-colors h-16" onclick="openBookingModal('${currentViewDate}', '${papan.papan_id}', '${String(hour).padStart(2, '0')}:00')">
+              <div class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 text-gray-400">
+                <span class="material-symbols-outlined">add_circle</span>
+              </div>
+            </td>
+          `;
+        }
+      });
+      
+      bodyHtml += `</tr>`;
+    }
+    
+    tbody.innerHTML = bodyHtml;
+
+  } catch (e) {
+    tbody.innerHTML = `<tr><td colspan="100" class="p-8 text-center text-red-500">${e.message}</td></tr>`;
+  }
+}
+
+// 3. FUNGSI PENDUKUNG
+function timeToMinutes(timeStr) {
+  if (!timeStr) return 0;
+  const str = String(timeStr);
+  const match = str.match(/(\d{2}):(\d{2})/);
+  if (match) {
+    return parseInt(match[1], 10) * 60 + parseInt(match[2], 10);
+  }
+  return 0;
+}
+
+function getTeacherColor(guruId) {
+  const colors = [
+    { bg: 'bg-blue-50', text: 'text-blue-900', border: 'border-blue-500', sub: 'text-blue-700' },
+    { bg: 'bg-emerald-50', text: 'text-emerald-900', border: 'border-emerald-500', sub: 'text-emerald-700' },
+    { bg: 'bg-purple-50', text: 'text-purple-900', border: 'border-purple-500', sub: 'text-purple-700' },
+    { bg: 'bg-amber-50', text: 'text-amber-900', border: 'border-amber-500', sub: 'text-amber-700' },
+    { bg: 'bg-rose-50', text: 'text-rose-900', border: 'border-rose-500', sub: 'text-rose-700' },
+    { bg: 'bg-indigo-50', text: 'text-indigo-900', border: 'border-indigo-500', sub: 'text-indigo-700' },
+    { bg: 'bg-teal-50', text: 'text-teal-900', border: 'border-teal-500', sub: 'text-teal-700' },
+  ];
+  let hash = 0;
+  const safeId = String(guruId || 'GURU'); 
+  for (let i = 0; i < safeId.length; i++) {
+    hash = safeId.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return colors[Math.abs(hash) % colors.length];
+}
+
+// 4. NAVIGASI TANGGAL
+function changeDay(offset) {
+  const parts = currentViewDate.split('-');
+  const d = new Date(parts[0], parts[1] - 1, parts[2]); 
+  d.setDate(d.getDate() + offset);
+  
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  
+  currentViewDate = `${year}-${month}-${day}`;
+  document.getElementById('input-view-date').value = currentViewDate;
+  loadDailySchedule();
+}
+
+function goToToday() {
+  const d = new Date();
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  
+  currentViewDate = `${year}-${month}-${day}`;
+  document.getElementById('input-view-date').value = currentViewDate;
+  loadDailySchedule();
+}
+
+// 5. MODAL & SIMPAN
+function openBookingModal(dateStr = '', papanId = '', jamMulai = '') {
+  document.getElementById('form-reservasi').reset();
+  document.getElementById('reservasi-error').classList.add('hidden');
+  
+  document.getElementById('input-tanggal').value = dateStr || currentViewDate;
+  
+  if (papanId) document.getElementById('select-papan').value = papanId;
+  
+  if (jamMulai) {
+    document.getElementById('input-jam-mulai').value = jamMulai;
+    const parts = jamMulai.split(':');
+    const endHour = String(parseInt(parts[0]) + 1).padStart(2, '0');
+    document.getElementById('input-jam-selesai').value = `${endHour}:00`;
+  }
+
+  App.openModal('modal-reservasi');
+}
+
+async function handleSaveReservasi(e) {
+  e.preventDefault();
+  const btn = document.getElementById('btn-submit-reservasi');
+  const errEl = document.getElementById('reservasi-error');
+  btn.disabled = true; btn.textContent = 'Memproses...';
+  errEl.classList.add('hidden');
+
+  const payload = Object.fromEntries(new FormData(e.target).entries());
+
+  try {
+    await App.callApi('apiCreateReservation', App.getToken(), payload);
+    App.closeModal('modal-reservasi');
+    App.toast('Reservasi berhasil dibuat!', 'success');
+    loadDailySchedule();
+  } catch (err) {
+    errEl.textContent = err.message || 'Gagal membuat reservasi';
+    errEl.classList.remove('hidden');
+  } finally {
+    btn.disabled = false; btn.textContent = 'Simpan Reservasi';
+  }
+}
+
+document.addEventListener('DOMContentLoaded', init);
+</script>

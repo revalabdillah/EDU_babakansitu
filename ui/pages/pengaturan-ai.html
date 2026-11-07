@@ -1,0 +1,105 @@
+<div class="max-w-2xl mx-auto space-y-6">
+  <div>
+    <h1 class="text-2xl font-bold">Pengaturan AI</h1>
+    <p class="text-sm text-text-muted mt-1">Hubungkan akun Anda dengan layanan AI untuk menggunakan fitur Generate Otomatis.</p>
+  </div>
+
+  <div class="bg-blue-50 border border-blue-200 p-4 rounded-xl text-sm text-blue-800">
+    <div class="flex gap-2">
+      <span class="material-symbols-outlined">info</span>
+      <div>
+        <p class="font-bold mb-1">Cara Mendapatkan API Key (Gratis):</p>
+        <ol class="list-decimal ml-4 space-y-1">
+          <li>Buka <a href="https://aistudio.google.com/app/apikey" target="_blank" class="font-bold underline text-blue-600">Google AI Studio</a>.</li>
+          <li>Login dengan akun Google Anda.</li>
+          <li>Klik tombol <b>"Create API Key"</b>.</li>
+          <li>Copy kunci tersebut dan paste di form bawah ini.</li>
+        </ol>
+      </div>
+    </div>
+  </div>
+
+  <div class="bg-white rounded-xl border border-border p-6 shadow-sm">
+    <div id="status-container" class="mb-6 hidden">
+      <div id="status-badge" class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-bold"></div>
+    </div>
+
+    <form id="form-apikey" onsubmit="handleSaveApiKey(event)" class="space-y-4">
+      <div>
+        <label class="block text-sm font-semibold mb-1.5">Gemini API Key Anda</label>
+        <div class="relative">
+          <input type="password" id="input-apikey" placeholder="AIzaSy..." class="w-full h-11 px-3 pr-10 rounded-lg border border-border focus:ring-2 focus:ring-primary text-sm font-mono">
+          <button type="button" onclick="togglePassword()" class="absolute right-3 top-3 text-text-muted hover:text-primary">
+            <span class="material-symbols-outlined text-[20px]" id="icon-eye">visibility</span>
+          </button>
+        </div>
+        <p class="text-xs text-text-muted mt-1">API Key Anda disimpan dengan aman dan hanya digunakan untuk fitur AI di akun Anda.</p>
+      </div>
+
+      <div id="error-msg" class="hidden p-3 rounded-lg bg-red-50 text-sm text-danger"></div>
+
+      <div class="pt-2">
+        <button type="submit" id="btn-save" class="h-10 px-6 rounded-lg bg-primary hover:bg-primary-600 text-white font-bold text-sm shadow-sm transition-colors">
+          Simpan API Key
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+async function loadStatus() {
+  try {
+    const res = await App.callApi('apiGetMyApiKeyStatus', App.getToken());
+    const container = document.getElementById('status-container');
+    const badge = document.getElementById('status-badge');
+    
+    container.classList.remove('hidden');
+    if (res.data.hasApiKey) {
+      badge.className = 'inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-bold bg-green-100 text-green-700';
+      badge.innerHTML = `<span class="material-symbols-outlined text-[18px]">check_circle</span> API Key Sudah Terpasang`;
+    } else {
+      badge.className = 'inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-bold bg-amber-100 text-amber-700';
+      badge.innerHTML = `<span class="material-symbols-outlined text-[18px]">warning</span> Belum Ada API Key`;
+    }
+  } catch (e) { console.error(e); }
+}
+
+function togglePassword() {
+  const inp = document.getElementById('input-apikey');
+  const icon = document.getElementById('icon-eye');
+  if (inp.type === 'password') {
+    inp.type = 'text';
+    icon.textContent = 'visibility_off';
+  } else {
+    inp.type = 'password';
+    icon.textContent = 'visibility';
+  }
+}
+
+async function handleSaveApiKey(e) {
+  e.preventDefault();
+  const btn = document.getElementById('btn-save');
+  const errEl = document.getElementById('error-msg');
+  const apiKey = document.getElementById('input-apikey').value.trim();
+
+  if (!apiKey) return App.toast('API Key tidak boleh kosong', 'warning');
+
+  btn.disabled = true; btn.textContent = 'Menyimpan...';
+  errEl.classList.add('hidden');
+
+  try {
+    await App.callApi('apiSaveApiKey', App.getToken(), apiKey);
+    App.toast('API Key berhasil disimpan!', 'success');
+    document.getElementById('input-apikey').value = ''; // Clear input demi keamanan
+    loadStatus();
+  } catch (err) {
+    errEl.textContent = err.message;
+    errEl.classList.remove('hidden');
+  } finally {
+    btn.disabled = false; btn.textContent = 'Simpan API Key';
+  }
+}
+
+document.addEventListener('DOMContentLoaded', loadStatus);
+</script>

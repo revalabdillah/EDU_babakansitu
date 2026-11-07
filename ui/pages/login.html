@@ -1,0 +1,87 @@
+<div class="min-h-screen flex items-center justify-center p-6 bg-gradient-to-br from-primary-50 to-white">
+  <div class="w-full max-w-md">
+    <div class="text-center mb-8">
+      <div class="w-16 h-16 rounded-2xl bg-primary flex items-center justify-center mx-auto mb-4 shadow-lg">
+        <span class="material-symbols-outlined text-white text-[32px]">school</span>
+      </div>
+      <h1 class="text-3xl font-extrabold text-text-primary"><?= appConfig.APP_NAME ?></h1>
+      <p class="text-sm text-text-muted mt-1"><?= appConfig.SCHOOL_NAME ?></p>
+    </div>
+
+    <div class="bg-white rounded-2xl shadow-xl p-8">
+      <h2 class="text-xl font-bold mb-6">Masuk ke Akun Anda</h2>
+
+      <form id="login-form" onsubmit="handleLogin(event)" class="space-y-4">
+        <div>
+          <label class="block text-sm font-semibold mb-2">Email / Username</label>
+          <input type="text" id="login-email" required class="w-full h-12 px-4 rounded-lg border border-border focus:ring-2 focus:ring-primary focus:outline-none" placeholder="Masukkan Email atau Username">
+        </div>
+        <div>
+          <label class="block text-sm font-semibold mb-2">Password</label>
+          <div class="relative">
+            <input type="password" id="login-password" required class="w-full h-12 px-4 pr-12 rounded-lg border border-border focus:ring-2 focus:ring-primary focus:outline-none" placeholder="••••••••">
+            <button type="button" onclick="togglePassword()" class="absolute right-3 top-3 text-text-muted hover:text-text-primary">
+              <span class="material-symbols-outlined text-[20px]" id="toggle-icon">visibility</span>
+            </button>
+          </div>
+        </div>
+
+        <div id="login-error" class="hidden p-3 rounded-lg bg-red-50 border border-red-200 text-sm text-danger"></div>
+
+        <button type="submit" id="login-btn" class="w-full h-12 rounded-lg bg-primary hover:bg-primary-600 text-white font-semibold transition-colors">
+          <span id="login-btn-text">Masuk</span>
+        </button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Hidden Form untuk Redirect GAS -->
+<form id="redirect-form" method="GET" action="<?!= webAppUrl ?>" target="_top" style="display:none;">
+  <input type="hidden" name="page" value="dashboard" id="redirect-page">
+  <input type="hidden" name="token" value="" id="redirect-token">
+</form>
+
+<script>
+function togglePassword() {
+  const inp = document.getElementById('login-password');
+  const icon = document.getElementById('toggle-icon');
+  if (inp.type === 'password') {
+    inp.type = 'text';
+    icon.textContent = 'visibility_off';
+  } else {
+    inp.type = 'password';
+    icon.textContent = 'visibility';
+  }
+}
+
+async function handleLogin(e) {
+  e.preventDefault();
+  const email = document.getElementById('login-email').value.trim();
+  const password = document.getElementById('login-password').value;
+  const errEl = document.getElementById('login-error');
+  const btn = document.getElementById('login-btn');
+  const btnText = document.getElementById('login-btn-text');
+
+  errEl.classList.add('hidden');
+  btn.disabled = true;
+  btnText.textContent = 'Memproses...';
+
+  try {
+    const res = await App.callApi('apiLogin', email, password);
+    if (res.success) {
+      App.setToken(res.data.token);
+      document.getElementById('redirect-token').value = res.data.token;
+      document.getElementById('redirect-form').submit();
+    } else {
+      throw new Error(res.message);
+    }
+  } catch (err) {
+    errEl.textContent = err.message || 'Login gagal. Coba lagi.';
+    errEl.classList.remove('hidden');
+  } finally {
+    btn.disabled = false;
+    btnText.textContent = 'Masuk';
+  }
+}
+</script>

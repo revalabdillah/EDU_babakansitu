@@ -1,0 +1,91 @@
+<header class="fixed top-0 right-0 left-0 lg:left-[260px] h-16 bg-white/90 backdrop-blur-md border-b border-border z-30 flex items-center justify-between px-4 md:px-6">
+  <!-- Left: hamburger (mobile) + breadcrumb -->
+  <div class="flex items-center gap-3 min-w-0">
+    <button onclick="toggleSidebar()" class="lg:hidden w-10 h-10 rounded-lg flex items-center justify-center hover:bg-bg-page">
+      <span class="material-symbols-outlined text-[22px]">menu</span>
+    </button>
+    <div class="hidden sm:flex items-center gap-1 text-sm text-text-muted">
+      <span><?= appConfig.SCHOOL_NAME ?></span>
+      <span class="material-symbols-outlined text-[16px]">chevron_right</span>
+      <span class="font-semibold text-text-primary"><?= pageTitle ?></span>
+    </div>
+  </div>
+
+  <!-- Ganti bagian kanan topbar menjadi seperti ini -->
+<div class="relative">
+  <button onclick="document.getElementById('dropdown-profile').classList.toggle('hidden')" class="flex items-center gap-2 pl-3 border-l border-border hover:bg-bg-page p-2 rounded-lg">
+    <div class="flex flex-col text-right hidden sm:flex">
+      <span class="text-sm font-semibold"><?= user ? user.name : '' ?></span>
+      <span class="text-xs text-primary font-bold"><?= user ? user.role.replace('_', ' ') : '' ?></span>
+    </div>
+    <div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center">
+      <span class="material-symbols-outlined text-white text-[18px]">person</span>
+    </div>
+  </button>
+  
+  <!-- Dropdown Menu -->
+  <div id="dropdown-profile" class="hidden absolute right-0 top-12 w-48 bg-white rounded-xl shadow-xl border border-border py-2 z-50">
+    <button onclick="openChangePassword()" class="w-full text-left px-4 py-2 text-sm font-semibold hover:bg-bg-page flex items-center gap-2">
+      <span class="material-symbols-outlined text-[18px]">password</span> Ganti Password
+    </button>
+    <button onclick="handleLogout()" class="w-full text-left px-4 py-2 text-sm font-semibold text-danger hover:bg-bg-page flex items-center gap-2">
+      <span class="material-symbols-outlined text-[18px]">logout</span> Keluar
+    </button>
+  </div>
+</div>
+<!-- Modal Ganti Password -->
+<div id="modal-password" class="hidden fixed inset-0 z-[100] bg-black/50 flex items-center justify-center p-4">
+  <div class="bg-white rounded-2xl shadow-xl w-full max-w-md fade-in">
+    <div class="p-6 border-b border-border flex justify-between items-center">
+      <h2 class="text-lg font-bold">Ganti Password</h2>
+      <button onclick="App.closeModal('modal-password')" class="w-8 h-8 rounded-lg hover:bg-bg-page flex items-center justify-center"><span class="material-symbols-outlined">close</span></button>
+    </div>
+    <form id="form-password" onsubmit="handleChangePassword(event)" class="p-6 space-y-4">
+      <div>
+        <label class="block text-sm font-semibold mb-1">Password Lama *</label>
+        <input type="password" name="oldPassword" required class="w-full h-10 px-3 rounded-lg border border-border">
+      </div>
+      <div>
+        <label class="block text-sm font-semibold mb-1">Password Baru *</label>
+        <input type="password" name="newPassword" required minlength="6" class="w-full h-10 px-3 rounded-lg border border-border">
+      </div>
+      <div id="pwd-error" class="hidden p-3 rounded-lg bg-red-50 text-sm text-danger"></div>
+      <div class="flex justify-end gap-2 pt-2">
+        <button type="button" onclick="App.closeModal('modal-password')" class="h-10 px-4 rounded-lg border text-sm font-semibold">Batal</button>
+        <button type="submit" class="h-10 px-4 rounded-lg bg-primary text-white text-sm font-semibold">Simpan Password</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+  function openChangePassword() {
+    document.getElementById('dropdown-profile').classList.add('hidden');
+    document.getElementById('form-password').reset();
+    document.getElementById('pwd-error').classList.add('hidden');
+    App.openModal('modal-password');
+  }
+
+  async function handleChangePassword(e) {
+    e.preventDefault();
+    const btn = e.target.querySelector('button[type="submit"]');
+    const errEl = document.getElementById('pwd-error');
+    const form = new FormData(e.target);
+    
+    btn.disabled = true; btn.textContent = 'Menyimpan...';
+    errEl.classList.add('hidden');
+
+    try {
+      await App.callApi('apiChangePassword', App.getToken(), form.get('oldPassword'), form.get('newPassword'));
+      App.closeModal('modal-password');
+      App.toast('Password berhasil diubah!', 'success');
+    } catch (err) {
+      errEl.textContent = err.message;
+      errEl.classList.remove('hidden');
+    } finally {
+      btn.disabled = false; btn.textContent = 'Simpan Password';
+    }
+  }
+</script>
+
+</header>

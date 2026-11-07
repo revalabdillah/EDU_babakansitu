@@ -1,0 +1,86 @@
+<div class="space-y-4">
+  <div>
+    <h1 class="text-2xl font-bold">Monitoring Perangkat Ajar</h1>
+    <p class="text-sm text-text-muted mt-1">Pantau keterisian dan publikasi perangkat ajar oleh guru</p>
+  </div>
+  <div class="bg-white rounded-xl border border-border overflow-hidden">
+    <table class="w-full text-sm">
+      <thead class="bg-bg-page border-b border-border">
+        <tr>
+          <th class="text-left px-4 py-3 text-xs font-bold text-text-muted uppercase">Nama Guru</th>
+          <th class="text-left px-4 py-3 text-xs font-bold text-text-muted uppercase">NIP</th>
+          <th class="text-center px-4 py-3 text-xs font-bold text-text-muted uppercase">Total Perangkat</th>
+          <th class="text-center px-4 py-3 text-xs font-bold text-text-muted uppercase">Terbit</th>
+          <th class="text-center px-4 py-3 text-xs font-bold text-text-muted uppercase">Draft</th>
+          <th class="text-center px-4 py-3 text-xs font-bold text-text-muted uppercase">Aksi</th>
+        </tr>
+      </thead>
+      <tbody id="monitoring-tbody"><tr><td colspan="6" class="p-8 text-center text-text-muted">Memuat data...</td></tr></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Modal Supervisi -->
+<div id="modal-supervisi" class="hidden fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+  <div class="bg-white rounded-2xl w-full max-w-md p-6">
+    <h2 class="text-lg font-bold mb-4">Beri Catatan Supervisi</h2>
+    <form id="form-supervisi" onsubmit="handleSaveSupervisi(event)" class="space-y-4">
+      <input type="hidden" name="guru_id" id="sup-guru-id">
+      <div>
+        <label class="block text-sm font-semibold mb-1">Nama Guru</label>
+        <input type="text" id="sup-guru-nama" readonly class="w-full h-10 px-3 bg-gray-100 border rounded-lg text-text-muted">
+      </div>
+      <div>
+        <label class="block text-sm font-semibold mb-1">Catatan (Non-blocking)</label>
+        <textarea name="catatan" required class="w-full h-32 px-3 py-2 border rounded-lg" placeholder="Berikan umpan balik..."></textarea>
+      </div>
+      <div class="flex justify-end gap-2">
+        <button type="button" onclick="App.closeModal('modal-supervisi')" class="h-10 px-4 border rounded-lg">Batal</button>
+        <button type="submit" class="h-10 px-4 bg-primary text-white rounded-lg">Kirim Catatan</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+async function loadMonitoring() {
+  const tbody = document.getElementById('monitoring-tbody');
+  try {
+    const res = await App.callApi('apiGetMonitoringGuru', App.getToken());
+    tbody.innerHTML = res.data.map(g => `
+      <tr class="border-b hover:bg-bg-page/50">
+        <td class="px-4 py-3 font-semibold">${App.escapeHtml(g.nama_lengkap)}</td>
+        <td class="px-4 py-3 font-mono text-xs text-text-muted">${App.escapeHtml(g.nip_nik)}</td>
+        <td class="px-4 py-3 text-center font-bold">${g.total_perangkat}</td>
+        <td class="px-4 py-3 text-center text-green-600 font-bold">${g.terbit}</td>
+        <td class="px-4 py-3 text-center text-amber-600 font-bold">${g.draft}</td>
+        <td class="px-4 py-3 text-center">
+          <button onclick="openSupervisi('${g.user_id}', '${App.escapeHtml(g.nama_lengkap)}')" class="text-primary hover:underline text-xs font-bold">Beri Catatan</button>
+        </td>
+      </tr>
+    `).join('');
+  } catch (err) {
+    tbody.innerHTML = `<tr><td colspan="6" class="p-8 text-center text-danger">${err.message}</td></tr>`;
+  }
+}
+
+function openSupervisi(id, nama) {
+  document.getElementById('sup-guru-id').value = id;
+  document.getElementById('sup-guru-nama').value = nama;
+  App.openModal('modal-supervisi');
+}
+
+async function handleSaveSupervisi(e) {
+  e.preventDefault();
+  const payload = Object.fromEntries(new FormData(e.target).entries());
+  payload.referensi_tipe = 'UMUM'; // Karena dari halaman monitoring
+  try {
+    await App.callApi('apiAddSupervisi', App.getToken(), payload);
+    App.closeModal('modal-supervisi');
+    App.toast('Catatan supervisi terkirim', 'success');
+  } catch (err) {
+    App.toast(err.message, 'error');
+  }
+}
+document.addEventListener('DOMContentLoaded', loadMonitoring);
+</script>

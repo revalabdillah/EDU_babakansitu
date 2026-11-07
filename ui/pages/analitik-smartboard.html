@@ -1,0 +1,57 @@
+<div class="space-y-6">
+  <div>
+    <h1 class="text-2xl font-bold">Analitik Smartboard</h1>
+    <p class="text-sm text-text-muted mt-1">Statistik pemanfaatan Papan Interaktif berdasarkan KBM Selesai</p>
+  </div>
+  
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-6" id="analitik-container">
+    <div class="skeleton h-40 rounded-xl"></div>
+    <div class="skeleton h-40 rounded-xl"></div>
+  </div>
+</div>
+
+<script>
+async function loadAnalitik() {
+  const container = document.getElementById('analitik-container');
+  try {
+    const res = await App.callApi('apiGetAnalitikSmartboard', App.getToken());
+    if (res.data.length === 0) {
+      container.innerHTML = '<div class="p-8 text-center bg-white border rounded-xl">Belum ada data papan interaktif.</div>';
+      return;
+    }
+
+    // Cari nilai tertinggi untuk skala bar chart
+    const maxUsage = Math.max(...res.data.map(d => d.total_penggunaan), 1);
+
+    container.innerHTML = res.data.map(d => {
+      const percentage = Math.round((d.total_penggunaan / maxUsage) * 100);
+      let badgeColor = d.status_kondisi === 'BAIK' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700';
+      
+      return `
+      <div class="bg-white p-6 rounded-xl border border-border shadow-sm">
+        <div class="flex justify-between items-start mb-2">
+          <div>
+            <h3 class="font-bold text-lg">${App.escapeHtml(d.nama_perangkat)}</h3>
+            <p class="text-xs text-text-muted mt-1">${App.escapeHtml(d.lokasi_ruangan)}</p>
+          </div>
+          <span class="px-2 py-1 text-xs font-bold rounded-full ${badgeColor}">${d.status_kondisi}</span>
+        </div>
+        
+        <div class="mt-6">
+          <div class="flex justify-between text-sm mb-1">
+            <span class="font-semibold text-gray-600">Total Sesi Selesai</span>
+            <span class="font-bold text-primary">${d.total_penggunaan} Sesi</span>
+          </div>
+          <div class="w-full bg-gray-100 rounded-full h-3">
+            <div class="bg-primary h-3 rounded-full" style="width: ${percentage}%"></div>
+          </div>
+        </div>
+      </div>
+      `;
+    }).join('');
+  } catch (err) {
+    container.innerHTML = `<div class="p-8 text-center text-danger">${err.message}</div>`;
+  }
+}
+document.addEventListener('DOMContentLoaded', loadAnalitik);
+</script>

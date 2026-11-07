@@ -1,0 +1,26 @@
+<div class="space-y-6">
+  <div>
+    <h1 class="text-2xl font-bold">Laporan</h1>
+    <p class="text-sm text-text-muted mt-1">Unduh rekapitulasi data sekolah</p>
+  </div>
+
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+    <div class="bg-white p-6 rounded-xl border border-border">
+      <div class="w-12 h-12 bg-red-100 text-red-600 rounded-lg flex items-center justify-center mb-4">
+        <span class="material-symbols-outlined">picture_as_pdf</span>
+      </div>
+      <h3 class="font-bold mb-1">Laporan Pemanfaatan Smartboard</h3>
+      <p class="text-sm text-text-muted mb-4">Rekap bulanan penggunaan papan interaktif per guru.</p>
+      <button onclick="App.toast('Fitur ekspor PDF akan hadir di v1.1', 'info')" class="h-10 px-4 bg-gray-100 hover:bg-gray-200 text-sm font-semibold rounded-lg w-full">Unduh PDF</button>
+    </div>
+
+    <div class="bg-white p-6 rounded-xl border border-border">
+      <div class="w-12 h-12 bg-green-100 text-green-600 rounded-lg flex items-center justify-center mb-4">
+        <span class="material-symbols-outlined">table_view</span>
+      </div>
+      <h3 class="font-bold mb-1">Rekap Nilai & Presensi</h3>
+      <p class="text-sm text-text-muted mb-4">Unduh data mentah presensi dan nilai siswa (CSV).</p>
+      <button onclick="App.toast('Fitur ekspor CSV akan hadir di v1.1', 'info')" class="h-10 px-4 bg-gray-100 hover:bg-gray-200 text-sm font-semibold rounded-lg w-full">Unduh CSV</button>
+    </div>
+  </div>
+</div>

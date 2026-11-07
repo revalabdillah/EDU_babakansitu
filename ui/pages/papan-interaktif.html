@@ -1,0 +1,128 @@
+<div class="space-y-4">
+  <div class="flex items-center justify-between flex-wrap gap-3">
+    <div>
+      <h1 class="text-2xl font-bold">Papan Interaktif</h1>
+      <p class="text-sm text-text-muted mt-1">Inventarisasi unit Smartboard sekolah</p>
+    </div>
+    <button onclick="openPapanModal()" class="h-10 px-4 rounded-lg bg-primary text-white font-semibold text-sm flex items-center gap-2">
+      <span class="material-symbols-outlined text-[20px]">add</span> Tambah Unit
+    </button>
+  </div>
+
+  <div class="bg-white rounded-xl border border-border overflow-hidden">
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead class="bg-bg-page border-b border-border">
+          <tr>
+            <th class="text-left px-4 py-3 text-xs font-bold text-text-muted uppercase">Nama Perangkat</th>
+            <th class="text-left px-4 py-3 text-xs font-bold text-text-muted uppercase">Lokasi Ruangan</th>
+            <th class="text-left px-4 py-3 text-xs font-bold text-text-muted uppercase">Spesifikasi</th>
+            <th class="text-left px-4 py-3 text-xs font-bold text-text-muted uppercase">Kondisi</th>
+            <th class="text-center px-4 py-3 text-xs font-bold text-text-muted uppercase">Aksi</th>
+          </tr>
+        </thead>
+        <tbody id="papan-tbody"><tr><td colspan="5" class="p-8 text-center text-text-muted">Memuat data...</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div id="modal-papan" class="hidden fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+  <div class="bg-white rounded-2xl shadow-xl w-full max-w-md fade-in">
+    <div class="p-6 border-b border-border flex justify-between items-center">
+      <h2 class="text-lg font-bold" id="modal-papan-title">Tambah Unit</h2>
+      <button onclick="App.closeModal('modal-papan')" class="w-8 h-8 rounded-lg hover:bg-bg-page flex items-center justify-center"><span class="material-symbols-outlined">close</span></button>
+    </div>
+    <form id="form-papan" onsubmit="handleSavePapan(event)" class="p-6 space-y-4">
+      <input type="hidden" name="papan_id" id="papan-id">
+      <div>
+        <label class="block text-sm font-semibold mb-1.5">Nama Perangkat *</label>
+        <input name="nama_perangkat" id="papan-nama" required class="w-full h-10 px-3 rounded-lg border border-border text-sm" placeholder="Smartboard Lab 01">
+      </div>
+      <div>
+        <label class="block text-sm font-semibold mb-1.5">Lokasi Ruangan *</label>
+        <input name="lokasi_ruangan" id="papan-lokasi" required class="w-full h-10 px-3 rounded-lg border border-border text-sm" placeholder="Gedung B - Lab Komputer">
+      </div>
+      <div>
+        <label class="block text-sm font-semibold mb-1.5">Spesifikasi</label>
+        <input name="spesifikasi" id="papan-spek" class="w-full h-10 px-3 rounded-lg border border-border text-sm" placeholder="75 Inch 4K Touchscreen">
+      </div>
+      <div>
+        <label class="block text-sm font-semibold mb-1.5">Kondisi *</label>
+        <select name="status_kondisi" id="papan-kondisi" required class="w-full h-10 px-3 rounded-lg border border-border text-sm">
+          <option value="BAIK">Baik</option><option value="MAINTENANCE">Maintenance</option><option value="RUSAK">Rusak</option>
+        </select>
+      </div>
+      <div id="papan-error" class="hidden p-3 rounded-lg bg-red-50 text-sm text-danger"></div>
+      <div class="flex justify-end gap-2 pt-2">
+        <button type="button" onclick="App.closeModal('modal-papan')" class="h-10 px-4 rounded-lg border text-sm font-semibold">Batal</button>
+        <button type="submit" class="h-10 px-4 rounded-lg bg-primary text-white text-sm font-semibold">Simpan</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+async function loadPapan() {
+  const tbody = document.getElementById('papan-tbody');
+  App.showSkeleton('papan-tbody', 3);
+  try {
+    const res = await App.callApi('apiReadAll', App.getToken(), 'master_papan_interaktif');
+    const data = res.data || [];
+    if (data.length === 0) return tbody.innerHTML = `<tr><td colspan="5" class="p-8 text-center text-text-muted">Belum ada unit Smartboard</td></tr>`;
+
+    tbody.innerHTML = data.map(p => {
+      let badge = p.status_kondisi === 'BAIK' ? 'bg-green-100 text-green-700' : (p.status_kondisi === 'MAINTENANCE' ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700');
+      return `<tr class="border-b hover:bg-bg-page/50">
+        <td class="px-4 py-3 font-semibold">${App.escapeHtml(p.nama_perangkat)}</td>
+        <td class="px-4 py-3">${App.escapeHtml(p.lokasi_ruangan)}</td>
+        <td class="px-4 py-3 text-text-muted text-xs">${App.escapeHtml(p.spesifikasi || '-')}</td>
+        <td class="px-4 py-3"><span class="px-2 py-0.5 rounded-full text-xs font-bold ${badge}">${p.status_kondisi}</span></td>
+        <td class="px-4 py-3 text-center">
+          <button onclick='editPapan(${JSON.stringify(p).replace(/'/g, "&#39;")})' class="text-primary hover:underline text-xs font-bold mr-2">Edit</button>
+          <button onclick="hapusPapan('${p.papan_id}')" class="text-danger hover:underline text-xs font-bold">Hapus</button>
+        </td>
+      </tr>`;
+    }).join('');
+  } catch (err) { tbody.innerHTML = `<tr><td colspan="5" class="p-8 text-center text-danger">${err.message}</td></tr>`; }
+}
+
+function openPapanModal() {
+  document.getElementById('form-papan').reset();
+  document.getElementById('papan-id').value = '';
+  document.getElementById('modal-papan-title').textContent = 'Tambah Unit';
+  document.getElementById('papan-error').classList.add('hidden');
+  App.openModal('modal-papan');
+}
+
+function editPapan(data) {
+  document.getElementById('papan-id').value = data.papan_id;
+  document.getElementById('papan-nama').value = data.nama_perangkat;
+  document.getElementById('papan-lokasi').value = data.lokasi_ruangan;
+  document.getElementById('papan-spek').value = data.spesifikasi;
+  document.getElementById('papan-kondisi').value = data.status_kondisi;
+  document.getElementById('modal-papan-title').textContent = 'Edit Unit';
+  document.getElementById('papan-error').classList.add('hidden');
+  App.openModal('modal-papan');
+}
+
+async function handleSavePapan(e) {
+  e.preventDefault();
+  const btn = e.target.querySelector('button[type="submit"]'); btn.disabled = true; btn.textContent = 'Menyimpan...';
+  const payload = Object.fromEntries(new FormData(e.target).entries());
+  try {
+    if (payload.papan_id) await App.callApi('apiUpdate', App.getToken(), 'master_papan_interaktif', payload.papan_id, payload);
+    else await App.callApi('apiCreate', App.getToken(), 'master_papan_interaktif', payload);
+    App.closeModal('modal-papan'); App.toast('Unit Smartboard disimpan', 'success'); loadPapan();
+  } catch (err) {
+    document.getElementById('papan-error').textContent = err.message; document.getElementById('papan-error').classList.remove('hidden');
+  } finally { btn.disabled = false; btn.textContent = 'Simpan'; }
+}
+
+async function hapusPapan(id) {
+  if (!confirm('Hapus unit ini?')) return;
+  try { await App.callApi('apiDelete', App.getToken(), 'master_papan_interaktif', id); App.toast('Unit dihapus', 'info'); loadPapan(); }
+  catch (err) { App.toast(err.message, 'error'); }
+}
+document.addEventListener('DOMContentLoaded', loadPapan);
+</script>

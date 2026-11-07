@@ -1,0 +1,176 @@
+<div class="space-y-4">
+  <div class="flex items-center justify-between flex-wrap gap-3">
+    <div>
+      <h1 class="text-2xl font-bold">Tahun Ajaran & Semester</h1>
+      <p class="text-sm text-text-muted mt-1">Atur periode akademik aktif sekolah</p>
+    </div>
+    <button onclick="openTaModal()" class="h-10 px-4 rounded-lg bg-primary text-white font-semibold text-sm flex items-center gap-2">
+      <span class="material-symbols-outlined text-[20px]">add</span> Tambah Tahun Ajaran
+    </button>
+  </div>
+
+  <div class="bg-white rounded-xl border border-border overflow-hidden">
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead class="bg-bg-page border-b border-border">
+          <tr>
+            <th class="text-left px-4 py-3 text-xs font-bold text-text-muted uppercase">Tahun Ajaran</th>
+            <th class="text-left px-4 py-3 text-xs font-bold text-text-muted uppercase">Semester</th>
+            <th class="text-left px-4 py-3 text-xs font-bold text-text-muted uppercase">Tanggal Mulai</th>
+            <th class="text-left px-4 py-3 text-xs font-bold text-text-muted uppercase">Tanggal Selesai</th>
+            <th class="text-left px-4 py-3 text-xs font-bold text-text-muted uppercase">Status Aktif</th>
+            <th class="text-center px-4 py-3 text-xs font-bold text-text-muted uppercase">Aksi</th>
+          </tr>
+        </thead>
+        <tbody id="ta-tbody"><tr><td colspan="6" class="p-8 text-center text-text-muted">Memuat data...</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div id="modal-ta" class="hidden fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+  <div class="bg-white rounded-2xl shadow-xl w-full max-w-md fade-in">
+    <div class="p-6 border-b border-border flex justify-between items-center">
+      <h2 class="text-lg font-bold" id="modal-ta-title">Tambah Tahun Ajaran</h2>
+      <button onclick="App.closeModal('modal-ta')" class="w-8 h-8 rounded-lg hover:bg-bg-page flex items-center justify-center"><span class="material-symbols-outlined">close</span></button>
+    </div>
+    <form id="form-ta" onsubmit="handleSaveTa(event)" class="p-6 space-y-4">
+      <input type="hidden" name="tahun_ajaran_id" id="ta-id">
+      
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <label class="block text-sm font-semibold mb-1.5">Nama Tahun Ajaran *</label>
+          <input name="nama_tahun_ajaran" id="ta-nama" required class="w-full h-10 px-3 rounded-lg border border-border text-sm" placeholder="2026/2027">
+        </div>
+        <div>
+          <label class="block text-sm font-semibold mb-1.5">Semester Aktif *</label>
+          <select name="semester_aktif" id="ta-semester" required class="w-full h-10 px-3 rounded-lg border border-border text-sm">
+            <option value="Ganjil">Ganjil</option>
+            <option value="Genap">Genap</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <label class="block text-sm font-semibold mb-1.5">Tanggal Mulai *</label>
+          <input type="date" name="tanggal_mulai" id="ta-mulai" required class="w-full h-10 px-3 rounded-lg border border-border text-sm">
+        </div>
+        <div>
+          <label class="block text-sm font-semibold mb-1.5">Tanggal Selesai *</label>
+          <input type="date" name="tanggal_selesai" id="ta-selesai" required class="w-full h-10 px-3 rounded-lg border border-border text-sm">
+        </div>
+      </div>
+
+      <div>
+        <label class="block text-sm font-semibold mb-1.5">Status *</label>
+        <select name="status" id="ta-status" required class="w-full h-10 px-3 rounded-lg border border-border text-sm">
+          <option value="AKTIF">Aktif (Sedang Berjalan)</option>
+          <option value="SELESAI">Selesai</option>
+          <option value="AKAN_DATANG">Akan Datang</option>
+        </select>
+      </div>
+
+      <div class="flex items-center gap-2 p-3 border border-border rounded-lg bg-gray-50">
+        <input type="checkbox" name="is_aktif" id="ta-isaktif" value="TRUE" class="w-4 h-4 text-primary rounded">
+        <label for="ta-isaktif" class="text-sm font-semibold cursor-pointer">Jadikan Tahun Ajaran Utama di Sistem</label>
+      </div>
+
+      <div id="ta-error" class="hidden p-3 rounded-lg bg-red-50 text-sm text-danger"></div>
+      <div class="flex justify-end gap-2 pt-2">
+        <button type="button" onclick="App.closeModal('modal-ta')" class="h-10 px-4 rounded-lg border text-sm font-semibold">Batal</button>
+        <button type="submit" class="h-10 px-4 rounded-lg bg-primary text-white text-sm font-semibold">Simpan</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+async function loadTa() {
+  const tbody = document.getElementById('ta-tbody');
+  App.showSkeleton('ta-tbody', 3);
+  try {
+    const res = await App.callApi('apiReadAll', App.getToken(), 'master_tahun_ajaran');
+    const data = res.data || [];
+    if (data.length === 0) return tbody.innerHTML = `<tr><td colspan="6" class="p-8 text-center text-text-muted">Belum ada data tahun ajaran</td></tr>`;
+
+    // Urutkan dari yang terbaru
+    data.sort((a,b) => String(b.nama_tahun_ajaran).localeCompare(String(a.nama_tahun_ajaran)));
+
+    tbody.innerHTML = data.map(ta => {
+      const isAktif = String(ta.is_aktif).toUpperCase() === 'TRUE';
+      const badgeAktif = isAktif 
+        ? '<span class="px-2.5 py-1 bg-green-100 text-green-700 font-bold text-xs rounded-full">SEDANG AKTIF</span>'
+        : '<span class="px-2.5 py-1 bg-gray-100 text-gray-500 font-bold text-xs rounded-full">TIDAK AKTIF</span>';
+
+      return `<tr class="border-b hover:bg-bg-page/50 ${isAktif ? 'bg-primary-50/30' : ''}">
+        <td class="px-4 py-3 font-bold text-lg text-primary">${App.escapeHtml(ta.nama_tahun_ajaran)}</td>
+        <td class="px-4 py-3 font-semibold">${App.escapeHtml(ta.semester_aktif)}</td>
+        <td class="px-4 py-3">${App.formatDate(ta.tanggal_mulai)}</td>
+        <td class="px-4 py-3">${App.formatDate(ta.tanggal_selesai)}</td>
+        <td class="px-4 py-3">${badgeAktif}</td>
+        <td class="px-4 py-3 text-center">
+          <button onclick='editTa(${JSON.stringify(ta).replace(/'/g, "&#39;")})' class="text-primary hover:underline text-xs font-bold mr-2">Edit</button>
+          <button onclick="hapusTa('${ta.tahun_ajaran_id}')" class="text-danger hover:underline text-xs font-bold">Hapus</button>
+        </td>
+      </tr>`;
+    }).join('');
+  } catch (err) { tbody.innerHTML = `<tr><td colspan="6" class="p-8 text-center text-danger">${err.message}</td></tr>`; }
+}
+
+function openTaModal() {
+  document.getElementById('form-ta').reset();
+  document.getElementById('ta-id').value = '';
+  document.getElementById('ta-isaktif').checked = false;
+  document.getElementById('modal-ta-title').textContent = 'Tambah Tahun Ajaran';
+  document.getElementById('ta-error').classList.add('hidden');
+  App.openModal('modal-ta');
+}
+
+function editTa(data) {
+  document.getElementById('ta-id').value = data.tahun_ajaran_id;
+  document.getElementById('ta-nama').value = data.nama_tahun_ajaran;
+  document.getElementById('ta-semester').value = data.semester_aktif;
+  document.getElementById('ta-mulai').value = data.tanggal_mulai;
+  document.getElementById('ta-selesai').value = data.tanggal_selesai;
+  document.getElementById('ta-status').value = data.status;
+  document.getElementById('ta-isaktif').checked = String(data.is_aktif).toUpperCase() === 'TRUE';
+  
+  document.getElementById('modal-ta-title').textContent = 'Edit Tahun Ajaran';
+  document.getElementById('ta-error').classList.add('hidden');
+  App.openModal('modal-ta');
+}
+
+async function handleSaveTa(e) {
+  e.preventDefault();
+  const btn = e.target.querySelector('button[type="submit"]'); btn.disabled = true; btn.textContent = 'Menyimpan...';
+  const form = new FormData(e.target);
+  const payload = Object.fromEntries(form.entries());
+  
+  // Checkbox handling
+  payload.is_aktif = document.getElementById('ta-isaktif').checked ? 'TRUE' : 'FALSE';
+
+  try {
+    await App.callApi('apiSaveTahunAjaran', App.getToken(), payload);
+    App.closeModal('modal-ta'); 
+    App.toast('Tahun Ajaran disimpan', 'success'); 
+    loadTa();
+  } catch (err) {
+    document.getElementById('ta-error').textContent = err.message; 
+    document.getElementById('ta-error').classList.remove('hidden');
+  } finally { 
+    btn.disabled = false; 
+    btn.textContent = 'Simpan'; 
+  }
+}
+
+async function hapusTa(id) {
+  if (!confirm('Hapus Tahun Ajaran ini? Data ini tidak bisa dikembalikan.')) return;
+  try { 
+    await App.callApi('apiDeleteTahunAjaran', App.getToken(), id); 
+    App.toast('Tahun Ajaran dihapus', 'info'); 
+    loadTa(); 
+  } catch (err) { App.toast(err.message, 'error'); }
+}
+document.addEventListener('DOMContentLoaded', loadTa);
+</script>

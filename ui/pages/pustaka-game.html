@@ -1,0 +1,80 @@
+<div class="space-y-4">
+  <div class="flex items-center justify-between">
+    <div>
+      <h1 class="text-2xl font-bold">Pustaka Game HTML</h1>
+      <p class="text-sm text-text-muted mt-1">Kelola game interaktif untuk Smartboard</p>
+    </div>
+    <button onclick="openGameModal()" class="h-10 px-4 rounded-lg bg-primary text-white font-semibold text-sm">+ Tambah Game</button>
+  </div>
+  <div class="bg-white rounded-xl border border-border overflow-hidden">
+    <table class="w-full text-sm">
+      <thead class="bg-bg-page border-b border-border">
+        <tr>
+          <th class="text-left px-4 py-3">Judul Game</th>
+          <th class="text-left px-4 py-3">Deskripsi</th>
+          <th class="text-center px-4 py-3">Aksi</th>
+        </tr>
+      </thead>
+      <tbody id="game-tbody"><tr><td colspan="3" class="p-8 text-center">Memuat...</td></tr></tbody>
+    </table>
+  </div>
+</div>
+
+<div id="modal-game" class="hidden fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+  <div class="bg-white rounded-2xl w-full max-w-lg p-6">
+    <h2 class="text-lg font-bold mb-4">Form Game</h2>
+    <form id="form-game" onsubmit="saveGame(event)" class="space-y-4">
+      <input type="hidden" name="game_id" id="game-id">
+      <div>
+        <label class="block text-sm font-semibold mb-1">Judul Game *</label>
+        <input name="judul_game" id="game-judul" required class="w-full h-10 px-3 border rounded-lg">
+      </div>
+      <div>
+        <label class="block text-sm font-semibold mb-1">Deskripsi</label>
+        <textarea name="deskripsi" id="game-desk" class="w-full h-20 px-3 py-2 border rounded-lg"></textarea>
+      </div>
+      <div>
+        <label class="block text-sm font-semibold mb-1">HTML Embed Code (Iframe/Script) *</label>
+        <textarea name="html_embed_code" id="game-html" required class="w-full h-32 px-3 py-2 border rounded-lg font-mono text-xs"></textarea>
+      </div>
+      <div class="flex justify-end gap-2">
+        <button type="button" onclick="App.closeModal('modal-game')" class="h-10 px-4 border rounded-lg">Batal</button>
+        <button type="submit" class="h-10 px-4 bg-primary text-white rounded-lg">Simpan</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+async function loadGames() {
+  const res = await App.callApi('apiGetGames', App.getToken());
+  document.getElementById('game-tbody').innerHTML = res.data.map(g => `
+    <tr class="border-b">
+      <td class="px-4 py-3 font-semibold">${App.escapeHtml(g.judul_game)}</td>
+      <td class="px-4 py-3 text-text-muted">${App.escapeHtml(g.deskripsi || '-')}</td>
+      <td class="px-4 py-3 text-center">
+        <button onclick='editGame(${JSON.stringify(g).replace(/'/g, "&#39;")})' class="text-primary font-bold mr-2">Edit</button>
+      </td>
+    </tr>
+  `).join('');
+}
+function openGameModal() {
+  document.getElementById('form-game').reset();
+  document.getElementById('game-id').value = '';
+  App.openModal('modal-game');
+}
+function editGame(data) {
+  document.getElementById('game-id').value = data.game_id;
+  document.getElementById('game-judul').value = data.judul_game;
+  document.getElementById('game-desk').value = data.deskripsi;
+  document.getElementById('game-html').value = data.html_embed_code;
+  App.openModal('modal-game');
+}
+async function saveGame(e) {
+  e.preventDefault();
+  const payload = Object.fromEntries(new FormData(e.target).entries());
+  await App.callApi('apiSaveGame', App.getToken(), payload);
+  App.closeModal('modal-game'); App.toast('Game disimpan', 'success'); loadGames();
+}
+document.addEventListener('DOMContentLoaded', loadGames);
+</script>

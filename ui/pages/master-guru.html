@@ -1,0 +1,261 @@
+<div class="space-y-4">
+  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+    <div>
+      <h1 class="text-2xl font-bold">Data Guru & Staf</h1>
+      <p class="text-sm text-text-muted mt-1">Kelola akun pengguna sistem</p>
+    </div>
+    <button onclick="openCreateModal()" class="h-10 px-4 rounded-lg bg-primary text-white font-semibold text-sm flex items-center justify-center gap-2">
+      <span class="material-symbols-outlined text-[20px]">add</span> Tambah Pengguna
+    </button>
+  </div>
+
+  <div class="bg-white rounded-xl border border-border overflow-hidden">
+    <!-- Toolbar Filter -->
+    <div class="p-4 border-b border-border bg-gray-50/50 flex flex-wrap gap-3 items-center">
+      <div class="relative flex-1 min-w-[200px]">
+        <span class="material-symbols-outlined absolute left-3 top-2.5 text-[20px] text-text-muted">search</span>
+        <input type="text" id="search-guru" oninput="renderGuru()" placeholder="Cari nama, email, atau username..." class="w-full h-10 pl-10 pr-4 rounded-lg border border-border text-sm bg-white">
+      </div>
+      <select id="filter-role" onchange="renderGuru()" class="h-10 px-3 rounded-lg border border-border text-sm bg-white min-w-[150px]">
+        <option value="">Semua Role</option>
+        <option value="GURU">Guru</option>
+        <option value="KEPALA_SEKOLAH">Kepala Sekolah</option>
+        <option value="ADMIN">Admin</option>
+      </select>
+      <select id="filter-status" onchange="renderGuru()" class="h-10 px-3 rounded-lg border border-border text-sm bg-white min-w-[130px]">
+        <option value="">Semua Status</option>
+        <option value="TRUE">Aktif</option>
+        <option value="FALSE">Nonaktif</option>
+      </select>
+    </div>
+
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm whitespace-nowrap">
+        <thead class="bg-bg-page border-b border-border">
+          <tr>
+            <th class="text-left px-4 py-3 text-xs font-bold text-text-muted uppercase">Nama Lengkap</th>
+            <th class="text-left px-4 py-3 text-xs font-bold text-text-muted uppercase">NIP / NIK</th>
+            <th class="text-left px-4 py-3 text-xs font-bold text-text-muted uppercase">Kontak</th>
+            <th class="text-left px-4 py-3 text-xs font-bold text-text-muted uppercase">Role</th>
+            <th class="text-left px-4 py-3 text-xs font-bold text-text-muted uppercase">Status</th>
+            <th class="text-center px-4 py-3 text-xs font-bold text-text-muted uppercase">Aksi</th>
+          </tr>
+        </thead>
+        <tbody id="guru-tbody"></tbody>
+      </table>
+    </div>
+    <div class="p-3 border-t text-xs text-text-muted text-right font-semibold" id="row-count-guru">Total: 0 Data</div>
+  </div>
+</div>
+
+<!-- MODAL CREATE -->
+<div id="modal-create" class="hidden fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+  <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg fade-in">
+    <div class="p-6 border-b border-border flex justify-between items-center">
+      <h2 class="text-lg font-bold">Tambah Pengguna Baru</h2>
+      <button onclick="App.closeModal('modal-create')" class="w-8 h-8 rounded-lg hover:bg-bg-page flex items-center justify-center"><span class="material-symbols-outlined">close</span></button>
+    </div>
+    <form id="form-create" onsubmit="handleCreate(event)" class="p-6 space-y-4">
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <label class="block text-sm font-semibold mb-1.5">Nama Lengkap *</label>
+          <input name="nama_lengkap" required class="w-full h-10 px-3 rounded-lg border border-border text-sm" placeholder="Siti Nurhaliza, S.Pd.">
+        </div>
+        <div>
+          <label class="block text-sm font-semibold mb-1.5">NIP / NIK</label>
+          <input name="nip_nik" class="w-full h-10 px-3 rounded-lg border border-border text-sm" placeholder="198503122010012015">
+        </div>
+      </div>
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <label class="block text-sm font-semibold mb-1.5">Email *</label>
+          <input name="email" type="email" required class="w-full h-10 px-3 rounded-lg border border-border text-sm" placeholder="guru@sekolah.sch.id">
+        </div>
+        <div>
+          <label class="block text-sm font-semibold mb-1.5">Username (Opsional)</label>
+          <input name="username" class="w-full h-10 px-3 rounded-lg border border-border text-sm" placeholder="Kosongkan untuk generate dari email">
+        </div>
+      </div>
+      <div>
+        <label class="block text-sm font-semibold mb-1.5">Role *</label>
+        <select name="role" required class="w-full h-10 px-3 rounded-lg border border-border text-sm">
+          <option value="GURU">Guru</option>
+          <option value="KEPALA_SEKOLAH">Kepala Sekolah</option>
+          <option value="ADMIN">Admin</option>
+        </select>
+      </div>
+      <div id="create-error" class="hidden p-3 rounded-lg bg-red-50 text-sm text-danger"></div>
+      <div class="flex justify-end gap-2 pt-2 border-t border-border">
+        <button type="button" onclick="App.closeModal('modal-create')" class="h-10 px-4 rounded-lg border text-sm font-semibold">Batal</button>
+        <button type="submit" id="btn-submit-create" class="h-10 px-4 rounded-lg bg-primary text-white text-sm font-semibold">Simpan</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- MODAL SUCCESS (PASSWORD) -->
+<div id="modal-success" class="hidden fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+  <div class="bg-white rounded-2xl shadow-xl w-full max-w-md fade-in">
+    <div class="p-6 text-center">
+      <div class="w-14 h-14 rounded-full bg-green-100 text-success flex items-center justify-center mx-auto mb-4">
+        <span class="material-symbols-outlined text-[28px]">check_circle</span>
+      </div>
+      <h2 class="text-lg font-bold mb-2">Berhasil!</h2>
+      <p class="text-sm text-text-muted mb-4">Simpan password sementara ini — hanya ditampilkan SEKALI.</p>
+      <div class="bg-bg-page p-4 rounded-lg mb-4">
+        <div class="text-xs text-text-muted mb-1">Email</div>
+        <div class="font-mono text-sm font-bold mb-3" id="success-email"></div>
+        <div class="text-xs text-text-muted mb-1">Password</div>
+        <div class="font-mono text-lg font-bold text-primary" id="success-password"></div>
+      </div>
+      <button onclick="App.closeModal('modal-success'); loadGuru();" class="w-full h-10 rounded-lg bg-primary text-white font-semibold text-sm">Mengerti</button>
+    </div>
+  </div>
+</div>
+
+<script>
+let __allGuru = [];
+
+async function loadGuru() {
+  App.showSkeleton('guru-tbody', 3);
+  try {
+    const res = await App.callApi('apiGetUsers', App.getToken(), ''); // Ambil semua role
+    __allGuru = res.data || [];
+    renderGuru();
+  } catch (err) {
+    document.getElementById('guru-tbody').innerHTML = `<tr><td colspan="6" class="p-8 text-center text-danger">${err.message}</td></tr>`;
+  }
+}
+
+function renderGuru() {
+  const tbody = document.getElementById('guru-tbody');
+  const q = document.getElementById('search-guru').value.toLowerCase();
+  const fRole = document.getElementById('filter-role').value;
+  const fStatus = document.getElementById('filter-status').value;
+
+  const filtered = __allGuru.filter(g => {
+    const matchQ = String(g.nama_lengkap||'').toLowerCase().includes(q) || 
+                   String(g.email||'').toLowerCase().includes(q) || 
+                   String(g.username||'').toLowerCase().includes(q);
+    const matchRole = !fRole || g.role === fRole;
+    const matchStatus = !fStatus || String(g.is_active).toUpperCase() === fStatus;
+    return matchQ && matchRole && matchStatus;
+  });
+
+  document.getElementById('row-count-guru').textContent = `Total: ${filtered.length} Data`;
+
+  if (filtered.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="6" class="p-12 text-center">
+      <div class="w-14 h-14 rounded-full bg-bg-page mx-auto mb-3 flex items-center justify-center">
+        <span class="material-symbols-outlined text-[28px] text-text-muted">group_off</span>
+      </div>
+      <div class="text-sm font-semibold mb-1">Data tidak ditemukan</div>
+    </td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = filtered.map(g => {
+    const active = String(g.is_active).toUpperCase() === 'TRUE';
+    const statusBadge = active
+      ? '<span class="inline-block px-2.5 py-0.5 rounded-full text-xs font-bold bg-green-100 text-green-700">AKTIF</span>'
+      : '<span class="inline-block px-2.5 py-0.5 rounded-full text-xs font-bold bg-gray-100 text-gray-600">NONAKTIF</span>';
+    
+    let roleBadge = '<span class="inline-block px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-100 text-blue-700">GURU</span>';
+    if (g.role === 'ADMIN') roleBadge = '<span class="inline-block px-2.5 py-0.5 rounded-full text-xs font-bold bg-violet-100 text-violet-700">ADMIN</span>';
+    if (g.role === 'KEPALA_SEKOLAH') roleBadge = '<span class="inline-block px-2.5 py-0.5 rounded-full text-xs font-bold bg-teal-100 text-teal-700">KEPSEK</span>';
+
+    return `<tr class="border-b hover:bg-bg-page/50">
+      <td class="px-4 py-3">
+        <div class="flex items-center gap-2">
+          <div class="w-8 h-8 rounded-full bg-primary-50 text-primary flex items-center justify-center text-xs font-bold">
+            ${App.escapeHtml((g.nama_lengkap || '?').charAt(0).toUpperCase())}
+          </div>
+          <div>
+            <div class="font-semibold text-gray-800">${App.escapeHtml(g.nama_lengkap)}</div>
+            <div class="text-xs text-text-muted">Dibuat: ${App.formatDate(g.created_at)}</div>
+          </div>
+        </div>
+      </td>
+      <td class="px-4 py-3 text-text-muted font-mono text-xs">${App.escapeHtml(g.nip_nik || '-')}</td>
+      <td class="px-4 py-3">
+        <div class="text-sm font-semibold text-gray-700">${App.escapeHtml(g.email)}</div>
+        <div class="text-xs text-text-muted">@${App.escapeHtml(g.username || '-')}</div>
+      </td>
+      <td class="px-4 py-3">${roleBadge}</td>
+      <td class="px-4 py-3">${statusBadge}</td>
+      <td class="px-4 py-3 text-center whitespace-nowrap">
+        <button onclick="resetPassword('${g.user_id}', '${App.escapeHtml(g.nama_lengkap)}')" class="w-8 h-8 rounded-lg hover:bg-bg-page text-primary inline-flex items-center justify-center" title="Reset Password">
+          <span class="material-symbols-outlined text-[18px]">key</span>
+        </button>
+        <button onclick="toggleActive('${g.user_id}')" class="w-8 h-8 rounded-lg hover:bg-bg-page text-text-muted inline-flex items-center justify-center" title="Aktif/Nonaktif">
+          <span class="material-symbols-outlined text-[18px]">${active ? 'toggle_on' : 'toggle_off'}</span>
+        </button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function openCreateModal() {
+  document.getElementById('form-create').reset();
+  document.getElementById('create-error').classList.add('hidden');
+  App.openModal('modal-create');
+}
+
+async function handleCreate(e) {
+  e.preventDefault();
+  const form = e.target;
+  const btn = document.getElementById('btn-submit-create');
+  const errEl = document.getElementById('create-error');
+  errEl.classList.add('hidden');
+  btn.disabled = true;
+  btn.textContent = 'Menyimpan...';
+
+  const payload = {
+    nama_lengkap: form.nama_lengkap.value.trim(),
+    nip_nik: form.nip_nik.value.trim(),
+    email: form.email.value.trim(),
+    username: form.username.value.trim(),
+    role: form.role.value
+  };
+
+  try {
+    const res = await App.callApi('apiCreateUser', App.getToken(), payload);
+    App.closeModal('modal-create');
+    document.getElementById('success-email').textContent = res.data.user.email;
+    document.getElementById('success-password').textContent = res.data.tempPassword;
+    App.openModal('modal-success');
+    await loadGuru();
+  } catch (err) {
+    errEl.textContent = err.message || 'Gagal menyimpan';
+    errEl.classList.remove('hidden');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Simpan';
+  }
+}
+
+async function resetPassword(userId, name) {
+  if (!confirm(`Reset password untuk "${name}"?\nPassword baru akan ditampilkan setelah reset.`)) return;
+  try {
+    const res = await App.callApi('apiResetPassword', App.getToken(), userId);
+    document.getElementById('success-email').textContent = '(user: ' + name + ')';
+    document.getElementById('success-password').textContent = res.data.newPassword;
+    App.openModal('modal-success');
+  } catch (err) {
+    App.toast(err.message, 'error');
+  }
+}
+
+async function toggleActive(userId) {
+  if (!confirm('Ubah status aktif pengguna ini?')) return;
+  try {
+    await App.callApi('apiToggleUserActive', App.getToken(), userId);
+    App.toast('Status user diubah', 'success');
+    await loadGuru();
+  } catch (err) {
+    App.toast(err.message, 'error');
+  }
+}
+
+document.addEventListener('DOMContentLoaded', loadGuru);
+</script>

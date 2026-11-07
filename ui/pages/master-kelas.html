@@ -1,0 +1,139 @@
+<div class="space-y-4">
+  <div class="flex items-center justify-between flex-wrap gap-3">
+    <div>
+      <h1 class="text-2xl font-bold">Data Kelas</h1>
+      <p class="text-sm text-text-muted mt-1">Kelola Rombongan Belajar & Wali Kelas</p>
+    </div>
+    <button onclick="openKelasModal()" class="h-10 px-4 rounded-lg bg-primary text-white font-semibold text-sm flex items-center gap-2">
+      <span class="material-symbols-outlined text-[20px]">add</span> Tambah Kelas
+    </button>
+  </div>
+
+  <div class="bg-white rounded-xl border border-border overflow-hidden">
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead class="bg-bg-page border-b border-border">
+          <tr>
+            <th class="text-left px-4 py-3 text-xs font-bold text-text-muted uppercase">Nama Kelas</th>
+            <th class="text-left px-4 py-3 text-xs font-bold text-text-muted uppercase">Tingkat</th>
+            <th class="text-left px-4 py-3 text-xs font-bold text-text-muted uppercase">Wali Kelas</th>
+            <th class="text-center px-4 py-3 text-xs font-bold text-text-muted uppercase">Aksi</th>
+          </tr>
+        </thead>
+        <tbody id="kelas-tbody"><tr><td colspan="5" class="p-8 text-center text-text-muted">Memuat data...</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div id="modal-kelas" class="hidden fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+  <div class="bg-white rounded-2xl shadow-xl w-full max-w-md fade-in">
+    <div class="p-6 border-b border-border flex justify-between items-center">
+      <h2 class="text-lg font-bold" id="modal-kelas-title">Tambah Kelas</h2>
+      <button onclick="App.closeModal('modal-kelas')" class="w-8 h-8 rounded-lg hover:bg-bg-page flex items-center justify-center"><span class="material-symbols-outlined">close</span></button>
+    </div>
+    <form id="form-kelas" onsubmit="handleSaveKelas(event)" class="p-6 space-y-4">
+      <input type="hidden" name="kelas_id" id="kelas-id">
+      <div>
+        <label class="block text-sm font-semibold mb-1.5">Nama Kelas *</label>
+        <input name="nama_kelas" id="kelas-nama" required class="w-full h-10 px-3 rounded-lg border border-border focus:ring-2 focus:ring-primary text-sm" placeholder="Kelas 1-A">
+      </div>
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <label class="block text-sm font-semibold mb-1.5">Tingkat *</label>
+          <select name="tingkat" id="kelas-tingkat" required class="w-full h-10 px-3 rounded-lg border border-border focus:ring-2 focus:ring-primary text-sm">
+            <option value="1">1</option><option value="2">2</option><option value="3">3</option>
+            <option value="4">4</option><option value="5">5</option><option value="6">6</option>
+          </select>
+        </div>
+      </div>
+      <div>
+        <label class="block text-sm font-semibold mb-1.5">Wali Kelas</label>
+        <select name="wali_guru_id" id="kelas-wali" class="w-full h-10 px-3 rounded-lg border border-border focus:ring-2 focus:ring-primary text-sm">
+          <option value="">-- Pilih Wali Kelas --</option>
+        </select>
+      </div>
+      <div id="kelas-error" class="hidden p-3 rounded-lg bg-red-50 text-sm text-danger"></div>
+      <div class="flex justify-end gap-2 pt-2">
+        <button type="button" onclick="App.closeModal('modal-kelas')" class="h-10 px-4 rounded-lg border text-sm font-semibold">Batal</button>
+        <button type="submit" class="h-10 px-4 rounded-lg bg-primary text-white text-sm font-semibold">Simpan</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+let listGuru = [];
+async function loadKelas() {
+  const tbody = document.getElementById('kelas-tbody');
+  App.showSkeleton('kelas-tbody', 3);
+  try {
+    const res = await App.callApi('apiReadAll', App.getToken(), 'master_kelas');
+    const data = res.data || [];
+    
+    // Load data guru untuk dropdown wali kelas
+    if (listGuru.length === 0) {
+      const resGuru = await App.callApi('apiReadAll', App.getToken(), 'master_users');
+      listGuru = resGuru.data.filter(u => u.role === 'GURU');
+      document.getElementById('kelas-wali').innerHTML += listGuru.map(g => `<option value="${g.user_id}">${g.nama_lengkap}</option>`).join('');
+    }
+
+    if (data.length === 0) return tbody.innerHTML = `<tr><td colspan="5" class="p-8 text-center text-text-muted">Belum ada data kelas</td></tr>`;
+
+    tbody.innerHTML = data.map(k => {
+      const wali = listGuru.find(g => g.user_id === k.wali_guru_id);
+      return `<tr class="border-b hover:bg-bg-page/50">
+        <td class="px-4 py-3 font-semibold">${App.escapeHtml(k.nama_kelas)}</td>
+        <td class="px-4 py-3">Kelas ${k.tingkat}</td>
+        <td class="px-4 py-3">${App.escapeHtml(k.tahun_ajaran)}</td>
+        <td class="px-4 py-3">${wali ? App.escapeHtml(wali.nama_lengkap) : '-'}</td>
+        <td class="px-4 py-3 text-center">
+          <button onclick='editKelas(${JSON.stringify(k).replace(/'/g, "&#39;")})' class="text-primary hover:underline text-xs font-bold mr-2">Edit</button>
+          <button onclick="hapusKelas('${k.kelas_id}')" class="text-danger hover:underline text-xs font-bold">Hapus</button>
+        </td>
+      </tr>`;
+    }).join('');
+  } catch (err) { tbody.innerHTML = `<tr><td colspan="5" class="p-8 text-center text-danger">${err.message}</td></tr>`; }
+}
+
+function openKelasModal() {
+  document.getElementById('form-kelas').reset();
+  document.getElementById('kelas-id').value = '';
+  document.getElementById('modal-kelas-title').textContent = 'Tambah Kelas';
+  document.getElementById('kelas-error').classList.add('hidden');
+  App.openModal('modal-kelas');
+}
+
+function editKelas(data) {
+  document.getElementById('kelas-id').value = data.kelas_id;
+  document.getElementById('kelas-nama').value = data.nama_kelas;
+  document.getElementById('kelas-tingkat').value = data.tingkat;
+  document.getElementById('kelas-ta').value = data.tahun_ajaran;
+  document.getElementById('kelas-wali').value = data.wali_guru_id || '';
+  document.getElementById('modal-kelas-title').textContent = 'Edit Kelas';
+  document.getElementById('kelas-error').classList.add('hidden');
+  App.openModal('modal-kelas');
+}
+
+async function handleSaveKelas(e) {
+  e.preventDefault();
+  const btn = e.target.querySelector('button[type="submit"]'); btn.disabled = true; btn.textContent = 'Menyimpan...';
+  const payload = Object.fromEntries(new FormData(e.target).entries());
+  const isEdit = !!payload.kelas_id;
+  
+  try {
+    if (isEdit) await App.callApi('apiUpdate', App.getToken(), 'master_kelas', payload.kelas_id, payload);
+    else await App.callApi('apiCreate', App.getToken(), 'master_kelas', payload);
+    App.closeModal('modal-kelas'); App.toast('Data kelas disimpan', 'success'); loadKelas();
+  } catch (err) {
+    document.getElementById('kelas-error').textContent = err.message; document.getElementById('kelas-error').classList.remove('hidden');
+  } finally { btn.disabled = false; btn.textContent = 'Simpan'; }
+}
+
+async function hapusKelas(id) {
+  if (!confirm('Hapus kelas ini?')) return;
+  try { await App.callApi('apiDelete', App.getToken(), 'master_kelas', id); App.toast('Kelas dihapus', 'info'); loadKelas(); }
+  catch (err) { App.toast(err.message, 'error'); }
+}
+document.addEventListener('DOMContentLoaded', loadKelas);
+</script>

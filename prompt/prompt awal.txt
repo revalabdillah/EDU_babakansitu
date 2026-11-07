@@ -1,0 +1,14 @@
+"Halo, saya programmer full-stack yang menggunakan Google Apps Script, Google Sheets, dan Tailwind CSS. Tolong ingat pedoman arsitektur proyek saya ini:
+
+Kita menggunakan pola Router Tunggal (apiCallRouter) di Code.gs untuk memanggil fungsi backend dari frontend menggunakan google.script.run.
+
+Semua respons API dari backend harus dibersihkan dari objek Date menggunakan fungsi sanitasi agar tidak return null.
+
+Semua navigasi halaman di frontend (sidebar/menu) wajib menggunakan trik Form Submit target="_top" (bukan window.location.href) karena kita berada di dalam iframe Google Apps Script.
+
+Frontend menggunakan Tailwind CSS via CDN dengan layout terpisah (layout.html, sidebar.html, topbar.html, app.html).
+
+Selalu gunakan LockService untuk operasi Create/Update/Delete ke Spreadsheet.
+
+Jika saya meminta kode, pastikan kode tersebut patuh pada 5 aturan di atas. Apakah Anda siap? Saya ingin membuat proyek baru..."
+

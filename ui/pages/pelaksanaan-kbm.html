@@ -1,0 +1,350 @@
+<div class="space-y-6">
+  <!-- Header & Filter Tanggal -->
+  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-4 rounded-xl border border-border shadow-sm">
+    <div>
+      <h1 class="text-2xl font-bold">Pelaksanaan KBM</h1>
+      <p class="text-sm text-text-muted mt-1">Jadwal mengajar berdasarkan tanggal reservasi</p>
+    </div>
+    <div class="flex items-center gap-2">
+      <label class="text-sm font-semibold text-gray-700">Pilih Tanggal:</label>
+      <input type="date" id="filter-tanggal" onchange="loadData()" class="h-10 px-3 rounded-lg border border-border font-semibold text-gray-700 focus:ring-2 focus:ring-primary outline-none cursor-pointer">
+    </div>
+  </div>
+
+  <!-- List Jadwal -->
+  <div id="jadwal-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+    <div class="col-span-full text-center py-10 text-gray-500">Memuat jadwal...</div>
+  </div>
+</div>
+
+<!-- MODAL COCOKKAN MATERI -->
+<div id="modal-cocokkan" class="hidden fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+  <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg fade-in">
+    <div class="p-6 border-b border-border flex justify-between items-center bg-indigo-50">
+      <h2 class="text-lg font-bold text-indigo-900 flex items-center gap-2">
+        <span class="material-symbols-outlined">book</span> Cocokkan Materi Ajar
+      </h2>
+      <button onclick="App.closeModal('modal-cocokkan')" class="w-8 h-8 rounded-lg hover:bg-indigo-100 flex items-center justify-center"><span class="material-symbols-outlined">close</span></button>
+    </div>
+    
+    <div class="p-6 space-y-4">
+      <div class="bg-blue-50 text-blue-800 text-sm p-3 rounded-lg mb-4">
+        Pilih materi (RPP/Modul) yang akan Anda ajarkan pada sesi <b id="cocokkan-kelas">Kelas</b> jam <b id="cocokkan-jam">Jam</b>.
+      </div>
+
+      <div>
+        <label class="block text-sm font-semibold mb-1.5">Pilih Materi Perangkat Ajar *</label>
+        <select id="select-perangkat" class="w-full h-10 px-3 rounded-lg border border-border focus:ring-2 focus:ring-primary text-sm">
+          <option value="">Memuat materi...</option>
+        </select>
+      </div>
+
+      <div id="cocokkan-error" class="hidden p-3 rounded-lg bg-red-50 text-sm text-danger"></div>
+      
+      <div class="flex justify-end gap-2 pt-4 border-t border-border">
+        <button type="button" onclick="App.closeModal('modal-cocokkan')" class="h-10 px-4 rounded-lg border text-sm font-semibold">Batal</button>
+        <button type="button" onclick="simpanCocokkan()" id="btn-save-cocokkan" class="h-10 px-4 rounded-lg bg-primary text-white text-sm font-semibold">Simpan Persiapan</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- LAYAR SMARTBOARD KBM (FULLSCREEN) -->
+<div id="smartboard-screen" class="hidden fixed inset-0 z-[9999] bg-[#0F172A] flex flex-col text-white">
+  <div class="h-16 px-6 bg-[#1E293B] border-b border-gray-700 flex justify-between items-center shrink-0">
+    <div class="flex items-center gap-4">
+      <div class="w-10 h-10 rounded-lg bg-primary flex items-center justify-center shadow-lg">
+        <span class="material-symbols-outlined text-white">cast_for_education</span>
+      </div>
+      <div>
+        <h1 class="text-xl font-bold leading-tight" id="sb-kelas">Memuat...</h1>
+        <p class="text-sm text-gray-400 font-semibold" id="sb-jam">00:00 - 00:00</p>
+      </div>
+    </div>
+    <div class="flex items-center gap-3">
+      <button onclick="konfirmasiAkhiriSesi()" class="h-11 px-6 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold shadow-lg transition-colors flex items-center gap-2">
+        <span class="material-symbols-outlined">stop_circle</span> Akhiri Sesi
+      </button>
+    </div>
+  </div>
+
+  <div class="flex-1 flex overflow-hidden">
+    <div class="w-[70%] p-4 flex flex-col bg-[#0F172A]">
+      <div class="flex-1 bg-white rounded-2xl overflow-hidden relative shadow-2xl border-4 border-gray-700">
+        <div id="game-placeholder" class="absolute inset-0 flex flex-col items-center justify-center bg-gray-100 text-gray-500">
+          <span class="material-symbols-outlined text-[64px] mb-4 text-gray-300">sports_esports</span>
+          <p class="font-bold">Game HTML tidak tersedia untuk materi ini.</p>
+          <p class="text-sm">Guru dapat mengajar menggunakan RPP di panel kanan.</p>
+        </div>
+        <iframe id="game-iframe" class="w-full h-full relative z-10 hidden" sandbox="allow-scripts allow-same-origin allow-forms"></iframe>
+      </div>
+    </div>
+
+    <div class="w-[30%] bg-[#1E293B] border-l border-gray-700 flex flex-col shrink-0">
+      <div class="p-4 border-b border-gray-700 bg-gray-800/50">
+        <h2 class="text-lg font-bold flex items-center gap-2">
+          <span class="material-symbols-outlined">edit_document</span> Jurnal Harian
+        </h2>
+        <p class="text-xs text-gray-400 mt-1">Materi: <span class="text-indigo-300 font-bold" id="sb-judul-materi">-</span></p>
+      </div>
+
+      <div class="flex-1 p-4 overflow-y-auto space-y-4">
+        <div>
+          <label class="block text-sm font-semibold mb-1.5 text-gray-300">Materi Pembahasan</label>
+          <textarea id="input-sb-materi" class="w-full h-32 bg-[#0F172A] border border-gray-600 rounded-xl p-3 text-white focus:ring-2 focus:ring-primary outline-none text-sm" placeholder="Tuliskan materi yang tersampaikan..."></textarea>
+        </div>
+        <div>
+          <label class="block text-sm font-semibold mb-1.5 text-gray-300">Catatan Hambatan (Opsional)</label>
+          <textarea id="input-sb-catatan" class="w-full h-32 bg-[#0F172A] border border-gray-600 rounded-xl p-3 text-white focus:ring-2 focus:ring-primary outline-none text-sm" placeholder="Tuliskan kendala siswa / teknis..."></textarea>
+        </div>
+        <div id="sb-error" class="hidden p-3 rounded-lg bg-red-900/50 border border-red-700 text-sm text-red-200"></div>
+      </div>
+
+      <div class="p-4 border-t border-gray-700 bg-gray-800/50">
+        <button onclick="simpanDanAkhiriSesi()" id="btn-sb-simpan" class="w-full h-12 rounded-xl bg-green-600 hover:bg-green-500 text-white font-bold text-lg shadow-lg transition-colors flex items-center justify-center gap-2">
+          <span class="material-symbols-outlined">save</span> Simpan Jurnal
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+let listJadwal = [];
+let listPerangkat = [];
+let selectedReservasiId = '';
+let currentKbmData = null;
+
+// 1. INISIALISASI
+async function init() {
+  // Set default tanggal hari ini
+  const d = new Date();
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  document.getElementById('filter-tanggal').value = `${year}-${month}-${day}`;
+  
+  await loadData();
+}
+
+async function loadData() {
+  const container = document.getElementById('jadwal-container');
+  const selectedDate = document.getElementById('filter-tanggal').value;
+  
+  App.showSkeleton('jadwal-container', 3);
+  
+  try {
+    const [resJadwal, resPerangkat] = await Promise.all([
+      App.callApi('apiGetJadwalKbm', App.getToken(), selectedDate), // Kirim tanggal
+      App.callApi('apiGetPerangkatForKbm', App.getToken())
+    ]);
+
+    listJadwal = resJadwal.data || [];
+    listPerangkat = resPerangkat.data || [];
+
+    if (listJadwal.length === 0) {
+      return container.innerHTML = `
+        <div class="col-span-full flex flex-col items-center justify-center py-20 bg-white rounded-2xl border border-dashed border-gray-300">
+          <span class="material-symbols-outlined text-[64px] text-gray-300 mb-4">event_busy</span>
+          <h3 class="text-lg font-bold text-gray-700">Tidak Ada Jadwal</h3>
+          <p class="text-sm text-gray-500 mt-1">Anda belum memiliki jadwal reservasi pada tanggal tersebut.</p>
+        </div>
+      `;
+    }
+
+    container.innerHTML = listJadwal.map(j => {
+      const isCompleted = j.status_reservasi === 'COMPLETED';
+      
+      let cardBg = 'bg-white border-border';
+      if (isCompleted) cardBg = 'bg-gray-50 border-gray-200 opacity-80';
+      else if (j.is_ready) cardBg = 'bg-white border-green-500 border-2';
+      
+      let actionBtn = '';
+      
+      if (isCompleted) {
+        actionBtn = `
+          <button disabled class="mt-4 w-full h-11 rounded-lg bg-gray-200 text-gray-500 font-bold flex items-center justify-center gap-2 cursor-not-allowed">
+            <span class="material-symbols-outlined">check_circle</span> Sesi Selesai
+          </button>
+        `;
+      } else if (j.is_ready) {
+        actionBtn = `
+          <button onclick="openKelas('${j.reservasi_id}')" class="mt-4 w-full h-11 rounded-lg bg-green-600 hover:bg-green-700 text-white font-bold flex items-center justify-center gap-2 shadow-sm transition-colors">
+            <span class="material-symbols-outlined">co_present</span> Buka Kelas
+          </button>
+        `;
+      } else {
+        actionBtn = `
+          <button onclick="openCocokkanModal('${j.reservasi_id}', '${j.nama_kelas}', '${j.jam_mulai} - ${j.jam_selesai}')" class="mt-4 w-full h-11 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold flex items-center justify-center gap-2 border border-gray-300">
+            <span class="material-symbols-outlined">library_add</span> Persiapan Sesi
+          </button>
+        `;
+      }
+
+      return `
+        <div class="${cardBg} rounded-2xl p-5 shadow-sm flex flex-col justify-between transition-all">
+          <div>
+            <div class="flex justify-between items-start mb-3">
+              <div class="px-3 py-1 ${isCompleted ? 'bg-gray-200 text-gray-600' : 'bg-primary-50 text-primary border border-primary-100'} font-mono text-sm font-bold rounded-lg">
+                ${j.jam_mulai} - ${j.jam_selesai}
+              </div>
+              
+              ${isCompleted 
+                ? `<span class="px-2 py-1 bg-green-100 text-green-700 text-xs font-bold rounded-full flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">done_all</span> Selesai</span>` 
+                : (j.is_ready 
+                    ? `<span class="px-2 py-1 bg-green-100 text-green-700 text-xs font-bold rounded-full flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">check_circle</span> Siap</span>` 
+                    : `<span class="px-2 py-1 bg-gray-100 text-gray-600 text-xs font-bold rounded-full">Belum Siap</span>`)}
+            </div>
+            
+            <h3 class="text-xl font-bold ${isCompleted ? 'text-gray-600' : 'text-gray-800'}">${App.escapeHtml(j.nama_kelas)}</h3>
+            <p class="text-sm text-text-muted mt-1 flex items-center gap-1">
+              <span class="material-symbols-outlined text-[16px]">tv_gen</span> ${App.escapeHtml(j.nama_papan)}
+            </p>
+            
+            ${j.is_ready 
+              ? `<div class="mt-3 p-2 ${isCompleted ? 'bg-gray-100 border-gray-200' : 'bg-green-50 border-green-200'} rounded-lg border">
+                   <div class="text-xs ${isCompleted ? 'text-gray-500' : 'text-green-600'} font-bold mb-1">Materi Diajarkan:</div>
+                   <div class="text-sm font-semibold ${isCompleted ? 'text-gray-600' : 'text-green-900'} line-clamp-1">${App.escapeHtml(j.judul_materi)}</div>
+                 </div>`
+              : ''}
+          </div>
+          ${actionBtn}
+        </div>
+      `;
+    }).join('');
+
+  } catch (err) {
+    container.innerHTML = `<div class="col-span-full text-center py-10 text-red-500">${err.message}</div>`;
+  }
+}
+
+// 2. MODAL COCOKKAN MATERI
+function openCocokkanModal(reservasiId, kelas, jam) {
+  selectedReservasiId = reservasiId;
+  document.getElementById('cocokkan-kelas').textContent = kelas;
+  document.getElementById('cocokkan-jam').textContent = jam;
+  document.getElementById('cocokkan-error').classList.add('hidden');
+
+  const select = document.getElementById('select-perangkat');
+  if (listPerangkat.length === 0) {
+    select.innerHTML = '<option value="">Belum ada materi. Buat di menu Perangkat Ajar.</option>';
+  } else {
+    select.innerHTML = '<option value="">-- Pilih Materi --</option>' + 
+      listPerangkat.map(p => `
+        <option value="${p.perangkat_id}">
+          [${p.nama_mapel}] ${p.judul} ${p.has_game ? '🎮' : ''}
+        </option>
+      `).join('');
+  }
+
+  App.openModal('modal-cocokkan');
+}
+
+async function simpanCocokkan() {
+  const perangkatId = document.getElementById('select-perangkat').value;
+  const errEl = document.getElementById('cocokkan-error');
+  const btn = document.getElementById('btn-save-cocokkan');
+
+  if (!perangkatId) return App.toast('Pilih materi terlebih dahulu', 'warning');
+
+  btn.disabled = true; btn.textContent = 'Menyimpan...';
+  errEl.classList.add('hidden');
+
+  try {
+    await App.callApi('apiSetMateriReservasi', App.getToken(), selectedReservasiId, perangkatId);
+    App.closeModal('modal-cocokkan');
+    App.toast('Materi berhasil dicocokkan!', 'success');
+    loadData();
+  } catch (err) {
+    errEl.textContent = err.message;
+    errEl.classList.remove('hidden');
+  } finally {
+    btn.disabled = false; btn.textContent = 'Simpan Persiapan';
+  }
+}
+
+// --- LOGIKA LAYAR SMARTBOARD ---
+async function openKelas(reservasiId) {
+  App.showLoading('Membuka ruang kelas...');
+  try {
+    const res = await App.callApi('apiGetDetailKbm', App.getToken(), reservasiId);
+    currentKbmData = res.data;
+    App.hideLoading();
+
+    document.getElementById('sb-kelas').textContent = currentKbmData.nama_kelas;
+    document.getElementById('sb-jam').textContent = `${currentKbmData.jam_mulai} - ${currentKbmData.jam_selesai} · ${currentKbmData.nama_papan}`;
+    document.getElementById('sb-judul-materi').textContent = currentKbmData.judul_materi;
+
+    document.getElementById('input-sb-materi').value = currentKbmData.materi_pembahasan || '';
+    document.getElementById('input-sb-catatan').value = currentKbmData.catatan_hambatan || '';
+    document.getElementById('sb-error').classList.add('hidden');
+
+    const iframe = document.getElementById('game-iframe');
+    const placeholder = document.getElementById('game-placeholder');
+
+    if (currentKbmData.game_html && currentKbmData.game_html.trim() !== '') {
+      placeholder.classList.add('hidden');
+      iframe.classList.remove('hidden');
+      
+      let cleanHtml = currentKbmData.game_html.replace(/```html/g, '').replace(/```/g, '');
+      const blob = new Blob([cleanHtml], { type: 'text/html' });
+      const blobUrl = URL.createObjectURL(blob);
+      
+      if (iframe.src && iframe.src.startsWith('blob:')) URL.revokeObjectURL(iframe.src);
+      iframe.src = blobUrl;
+    } else {
+      placeholder.classList.remove('hidden');
+      iframe.classList.add('hidden');
+      iframe.src = '';
+    }
+
+    document.getElementById('smartboard-screen').classList.remove('hidden');
+    
+  } catch (err) {
+    App.hideLoading();
+    App.toast(err.message, 'error');
+  }
+}
+
+function konfirmasiAkhiriSesi() {
+  if (confirm('Akhiri sesi KBM ini? Pastikan Jurnal sudah diisi. Sistem akan menyimpan jurnal dan menandai sesi ini sebagai SELESAI.')) {
+    simpanDanAkhiriSesi(); 
+  }
+}
+
+async function simpanDanAkhiriSesi() {
+  if (!currentKbmData) return;
+  
+  const btn = document.getElementById('btn-sb-simpan');
+  const errEl = document.getElementById('sb-error');
+  
+  const materi = document.getElementById('input-sb-materi').value.trim();
+  if (!materi) return App.toast('Materi Pembahasan wajib diisi', 'warning');
+
+  btn.disabled = true; 
+  btn.innerHTML = '<span class="material-symbols-outlined animate-spin">refresh</span> Menyimpan...';
+  errEl.classList.add('hidden');
+
+  const payload = {
+    jurnal_id: currentKbmData.jurnal_id,
+    reservasi_id: currentKbmData.reservasi_id,
+    kelas_id: currentKbmData.kelas_id,
+    materi_pembahasan: materi,
+    catatan_hambatan: document.getElementById('input-sb-catatan').value.trim()
+  };
+
+  try {
+    await App.callApi('apiSaveJurnalKbm', App.getToken(), payload);
+    App.toast('Sesi KBM berhasil diselesaikan!', 'success');
+    document.getElementById('smartboard-screen').classList.add('hidden');
+    loadData();
+  } catch (err) {
+    errEl.textContent = err.message;
+    errEl.classList.remove('hidden');
+    btn.disabled = false; 
+    btn.innerHTML = '<span class="material-symbols-outlined">save</span> Simpan Jurnal';
+  }
+}
+
+document.addEventListener('DOMContentLoaded', init);
+</script>

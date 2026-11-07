@@ -1,0 +1,193 @@
+<div class="space-y-4">
+  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+    <div>
+      <h1 class="text-2xl font-bold">Pemetaan Mengajar</h1>
+      <p class="text-sm text-text-muted mt-1">Hubungkan Guru, Mata Pelajaran, dan Kelas</p>
+    </div>
+    <button onclick="openMappingModal()" class="h-10 px-4 rounded-lg bg-primary text-white font-semibold text-sm flex items-center gap-2">
+      <span class="material-symbols-outlined text-[20px]">add</span> Tambah Pemetaan
+    </button>
+  </div>
+
+  <div class="bg-white rounded-xl border border-border overflow-hidden">
+    <!-- Toolbar Filter -->
+    <div class="p-4 border-b border-border bg-gray-50/50 flex flex-wrap gap-3 items-center">
+      <div class="relative flex-1 min-w-[200px]">
+        <span class="material-symbols-outlined absolute left-3 top-2.5 text-[20px] text-text-muted">search</span>
+        <input type="text" id="search-mapping" oninput="renderMapping()" placeholder="Cari nama guru atau mapel..." class="w-full h-10 pl-10 pr-4 rounded-lg border border-border text-sm bg-white">
+      </div>
+    </div>
+
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm whitespace-nowrap">
+        <thead class="bg-bg-page border-b border-border">
+          <tr>
+            <th class="text-left px-4 py-3 text-xs font-bold text-text-muted uppercase">Nama Guru</th>
+            <th class="text-left px-4 py-3 text-xs font-bold text-text-muted uppercase">Mata Pelajaran</th>
+            <th class="text-left px-4 py-3 text-xs font-bold text-text-muted uppercase">Kelas</th>
+            <th class="text-left px-4 py-3 text-xs font-bold text-text-muted uppercase">Tahun Ajaran</th>
+            <th class="text-center px-4 py-3 text-xs font-bold text-text-muted uppercase">Aksi</th>
+          </tr>
+        </thead>
+        <tbody id="mapping-tbody"><tr><td colspan="5" class="p-8 text-center text-text-muted">Memuat data...</td></tr></tbody>
+      </table>
+    </div>
+    <div class="p-3 border-t text-xs text-text-muted text-right font-semibold" id="row-count-mapping">Total: 0 Data</div>
+  </div>
+</div>
+
+<!-- MODAL PEMETAAN -->
+<div id="modal-mapping" class="hidden fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+  <div class="bg-white rounded-2xl shadow-xl w-full max-w-md fade-in">
+    <div class="p-6 border-b border-border flex justify-between items-center">
+      <h2 class="text-lg font-bold">Tambah Pemetaan</h2>
+      <button onclick="App.closeModal('modal-mapping')" class="w-8 h-8 rounded-lg hover:bg-bg-page flex items-center justify-center"><span class="material-symbols-outlined">close</span></button>
+    </div>
+    <form id="form-mapping" onsubmit="handleSaveMapping(event)" class="p-6 space-y-4">
+      
+      <div>
+        <label class="block text-sm font-semibold mb-1.5">Guru Pengampu *</label>
+        <select name="guru_id" id="map-guru" required class="w-full h-10 px-3 rounded-lg border border-border text-sm">
+          <option value="">-- Pilih Guru --</option>
+        </select>
+      </div>
+
+      <div>
+        <label class="block text-sm font-semibold mb-1.5">Mata Pelajaran *</label>
+        <select name="mapel_id" id="map-mapel" required class="w-full h-10 px-3 rounded-lg border border-border text-sm">
+          <option value="">-- Pilih Mapel --</option>
+        </select>
+      </div>
+
+      <div>
+        <label class="block text-sm font-semibold mb-1.5">Kelas *</label>
+        <select name="kelas_id" id="map-kelas" required class="w-full h-10 px-3 rounded-lg border border-border text-sm">
+          <option value="">-- Pilih Kelas --</option>
+        </select>
+      </div>
+
+      <!-- Info Tahun Ajaran Aktif (Readonly) -->
+      <div class="bg-blue-50 p-3 rounded-lg border border-blue-100 flex items-center gap-2">
+        <span class="material-symbols-outlined text-blue-600">info</span>
+        <span class="text-sm text-blue-800">
+          Pemetaan disimpan pada Tahun Ajaran: <b id="info-tahun-ajaran-map">Memuat...</b>
+        </span>
+      </div>
+
+      <div id="mapping-error" class="hidden p-3 rounded-lg bg-red-50 text-sm text-danger"></div>
+      <div class="flex justify-end gap-2 pt-2">
+        <button type="button" onclick="App.closeModal('modal-mapping')" class="h-10 px-4 rounded-lg border text-sm font-semibold">Batal</button>
+        <button type="submit" class="h-10 px-4 rounded-lg bg-primary text-white text-sm font-semibold">Simpan Pemetaan</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+let listGuru = [];
+let listMapel = [];
+let listKelas = [];
+let listMapping = [];
+let activeTAId = '';
+
+async function loadMapping() {
+  App.showSkeleton('mapping-tbody', 3);
+  try {
+    // Load Dropdown Data & Tahun Ajaran
+    const [resGuru, resMapel, resKelas, resTA, resMap] = await Promise.all([
+      App.callApi('apiGetUsers', App.getToken(), 'GURU'),
+      App.callApi('apiReadAll', App.getToken(), 'master_mapel'),
+      App.callApi('apiReadAll', App.getToken(), 'master_kelas'),
+      App.callApi('apiReadAll', App.getToken(), 'master_tahun_ajaran'),
+      App.callApi('apiGetMappingMengajar', App.getToken())
+    ]);
+
+    listGuru = resGuru.data || [];
+    listMapel = resMapel.data || [];
+    listKelas = resKelas.data || [];
+    listMapping = resMap.data || [];
+
+    // Cari Tahun Ajaran Aktif
+    const activeTA = (resTA.data || []).find(t => String(t.is_aktif).toUpperCase() === 'TRUE');
+    activeTAId = activeTA ? activeTA.tahun_ajaran_id : '';
+    document.getElementById('info-tahun-ajaran-map').textContent = activeTA ? activeTA.nama_tahun_ajaran : 'Tidak ada tahun ajaran aktif!';
+
+    // Populate Dropdowns
+    document.getElementById('map-guru').innerHTML = '<option value="">-- Pilih Guru --</option>' + listGuru.map(g => `<option value="${g.user_id}">${g.nama_lengkap}</option>`).join('');
+    document.getElementById('map-mapel').innerHTML = '<option value="">-- Pilih Mapel --</option>' + listMapel.map(m => `<option value="${m.mapel_id}">${m.nama_mapel}</option>`).join('');
+    document.getElementById('map-kelas').innerHTML = '<option value="">-- Pilih Kelas --</option>' + listKelas.map(k => `<option value="${k.kelas_id}">${k.nama_kelas}</option>`).join('');
+
+    renderMapping();
+  } catch (err) {
+    document.getElementById('mapping-tbody').innerHTML = `<tr><td colspan="5" class="p-8 text-center text-danger">${err.message}</td></tr>`;
+  }
+}
+
+function renderMapping() {
+  const tbody = document.getElementById('mapping-tbody');
+  const q = document.getElementById('search-mapping').value.toLowerCase();
+
+  const filtered = listMapping.filter(d => 
+    String(d.guru_nama).toLowerCase().includes(q) || 
+    String(d.mapel_nama).toLowerCase().includes(q) ||
+    String(d.kelas_nama).toLowerCase().includes(q)
+  );
+
+  document.getElementById('row-count-mapping').textContent = `Total: ${filtered.length} Data`;
+
+  if (filtered.length === 0) {
+    return tbody.innerHTML = `<tr><td colspan="5" class="p-8 text-center text-text-muted">Belum ada data pemetaan mengajar</td></tr>`;
+  }
+
+  tbody.innerHTML = filtered.map(d => `
+    <tr class="border-b hover:bg-bg-page/50">
+      <td class="px-4 py-3 font-semibold text-gray-800">${App.escapeHtml(d.guru_nama)}</td>
+      <td class="px-4 py-3"><span class="px-2 py-1 bg-blue-50 text-blue-700 rounded text-xs font-bold">${App.escapeHtml(d.mapel_nama)}</span></td>
+      <td class="px-4 py-3 font-semibold">${App.escapeHtml(d.kelas_nama)}</td>
+      <td class="px-4 py-3 font-semibold text-primary">${App.escapeHtml(d.tahun_ajaran_nama)}</td>
+      <td class="px-4 py-3 text-center">
+        <button onclick="hapusMapping('${d.mapping_id}')" class="text-danger hover:underline text-xs font-bold">Hapus</button>
+      </td>
+    </tr>
+  `).join('');
+}
+
+function openMappingModal() {
+  if (!activeTAId) return App.toast('Tidak ada Tahun Ajaran aktif. Harap aktifkan di menu Tahun Ajaran.', 'warning');
+  document.getElementById('form-mapping').reset();
+  document.getElementById('mapping-error').classList.add('hidden');
+  App.openModal('modal-mapping');
+}
+
+async function handleSaveMapping(e) {
+  e.preventDefault();
+  const btn = e.target.querySelector('button[type="submit"]'); btn.disabled = true; btn.textContent = 'Menyimpan...';
+  const errEl = document.getElementById('mapping-error');
+  const payload = Object.fromEntries(new FormData(e.target).entries());
+
+  try {
+    await App.callApi('apiCreateMapping', App.getToken(), payload);
+    App.closeModal('modal-mapping');
+    App.toast('Pemetaan berhasil disimpan', 'success');
+    loadMapping();
+  } catch (err) {
+    errEl.textContent = err.message;
+    errEl.classList.remove('hidden');
+  } finally {
+    btn.disabled = false; btn.textContent = 'Simpan Pemetaan';
+  }
+}
+
+async function hapusMapping(id) {
+  if (!confirm('Hapus pemetaan ini?')) return;
+  try {
+    await App.callApi('apiDelete', App.getToken(), 'mapping_mengajar', id);
+    App.toast('Pemetaan dihapus', 'info');
+    loadMapping();
+  } catch (err) {
+    App.toast(err.message, 'error');
+  }
+}
+
+document.addEventListener('DOMContentLoaded', loadMapping);
+</script>

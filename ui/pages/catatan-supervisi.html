@@ -1,0 +1,31 @@
+<div class="space-y-4">
+  <h1 class="text-2xl font-bold">Log Catatan Supervisi</h1>
+  <div id="supervisi-list" class="space-y-3">
+    <div class="p-4 text-center text-text-muted">Memuat data...</div>
+  </div>
+</div>
+
+<script>
+async function loadSupervisi() {
+  const list = document.getElementById('supervisi-list');
+  try {
+    const res = await App.callApi('apiGetSupervisi', App.getToken());
+    if (res.data.length === 0) {
+      list.innerHTML = '<div class="p-8 text-center bg-white border rounded-xl">Belum ada catatan supervisi.</div>';
+      return;
+    }
+    list.innerHTML = res.data.map(s => `
+      <div class="p-4 bg-white border border-indigo-100 rounded-xl shadow-sm border-l-4 border-l-indigo-500">
+        <div class="flex justify-between items-start mb-2">
+          <div class="font-bold text-indigo-900">Catatan Supervisi</div>
+          <div class="text-xs text-text-muted font-mono">${App.formatDate(s.tanggal)}</div>
+        </div>
+        <p class="text-sm text-gray-700">${App.escapeHtml(s.catatan)}</p>
+      </div>
+    `).join('');
+  } catch (e) {
+    list.innerHTML = `<div class="p-4 text-danger">${e.message}</div>`;
+  }
+}
+document.addEventListener('DOMContentLoaded', loadSupervisi);
+</script>

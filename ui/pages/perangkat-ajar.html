@@ -1,0 +1,476 @@
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<style>
+  #ai-content h2 { font-size: 1.25rem; font-weight: 800; color: #1e293b; border-bottom: 2px solid #e2e8f0; padding-bottom: 0.5rem; margin-top: 2rem; margin-bottom: 1rem; }
+  #ai-content h3 { font-size: 1rem; font-weight: 700; color: #4f46e5; margin-top: 1.5rem; margin-bottom: 0.5rem; }
+  #ai-content p { font-size: 0.95rem; color: #334155; line-height: 1.7; margin-bottom: 0.75rem; white-space: pre-wrap; }
+  #ai-content table { width: 100%; border-collapse: collapse; margin: 1rem 0; font-size: 0.9rem; border: 1px solid #e2e8f0; }
+  #ai-content th { background-color: #eef2ff; color: #1e40af; padding: 12px; border: 1px solid #e2e8f0; text-align: left; }
+  #ai-content td { padding: 12px; border: 1px solid #e2e8f0; vertical-align: top; }
+</style>
+
+<div class="space-y-6">
+  <!-- Header & Filter -->
+  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-4 rounded-xl border border-border shadow-sm">
+    <div>
+      <h1 class="text-2xl font-bold">Perangkat Ajar</h1>
+      <p class="text-sm text-text-muted mt-1">Kelola RPP, LKPD, dan Game HTML Anda</p>
+    </div>
+    <button onclick="openFormModal()" class="h-10 px-4 rounded-lg bg-primary text-white font-semibold text-sm flex items-center justify-center gap-2 shadow-sm shrink-0">
+      <span class="material-symbols-outlined text-[20px]">add</span> Topik Baru
+    </button>
+  </div>
+
+  <!-- Grid Kartu Informasi -->
+  <div id="grid-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+    <!-- Diisi oleh JavaScript -->
+  </div>
+</div>
+
+<!-- MODAL FORM TOPIK BARU -->
+<div id="modal-form" class="hidden fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+  <div class="bg-white rounded-2xl shadow-xl w-full max-w-2xl fade-in max-h-[90vh] flex flex-col">
+    <div class="p-6 border-b border-border flex justify-between items-center">
+      <h2 class="text-lg font-bold">Tambah Topik / Materi</h2>
+      <button onclick="App.closeModal('modal-form')" class="w-8 h-8 rounded-lg hover:bg-bg-page flex items-center justify-center"><span class="material-symbols-outlined">close</span></button>
+    </div>
+    <form id="form-data" onsubmit="handleSave(event)" class="p-6 space-y-4 overflow-y-auto">
+      <input type="hidden" name="perangkat_id" id="f-id">
+      <input type="hidden" name="kategori" value="ATP"> <!-- Simpan sebagai ATP -->
+      
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <label class="block text-sm font-semibold mb-1.5">Mata Pelajaran *</label>
+          <select name="mapel_id" id="f-mapel" required class="w-full h-10 px-3 rounded-lg border border-border text-sm"></select>
+        </div>
+        <div>
+          <label class="block text-sm font-semibold mb-1.5">Kelas *</label>
+          <select name="kelas_id" id="f-kelas" required class="w-full h-10 px-3 rounded-lg border border-border text-sm"></select>
+        </div>
+        <div class="col-span-2">
+          <label class="block text-sm font-semibold mb-1.5">Judul / Materi Pokok *</label>
+          <input name="judul" id="f-judul" required class="w-full h-10 px-3 rounded-lg border border-border text-sm" placeholder="Cth: Gaya Apung">
+        </div>
+        <div class="col-span-2">
+          <label class="block text-sm font-semibold mb-1.5">Tujuan Pembelajaran (TP) *</label>
+          <textarea name="deskripsi" id="f-deskripsi" required class="w-full h-24 px-3 py-2 rounded-lg border border-border text-sm" placeholder="Tuliskan TP..."></textarea>
+        </div>
+      </div>
+      <div id="form-error" class="hidden p-3 rounded-lg bg-red-50 text-sm text-danger"></div>
+      <div class="flex justify-end gap-2 pt-4 border-t border-border">
+        <button type="button" onclick="App.closeModal('modal-form')" class="h-10 px-4 rounded-lg border text-sm font-semibold">Batal</button>
+        <button type="submit" class="h-10 px-4 rounded-lg bg-primary text-white text-sm font-semibold">Simpan Topik</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- MODAL AKSI (PILIHAN BUAT / LIHAT) -->
+<div id="modal-aksi" class="hidden fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+  <div class="bg-white rounded-2xl shadow-xl w-full max-w-md fade-in p-6 text-center">
+    <h2 class="text-xl font-bold mb-2" id="aksi-title">Materi</h2>
+    <p class="text-sm text-gray-500 mb-6">Pilih aksi untuk materi ini</p>
+    
+    <div class="space-y-3">
+      <button id="btn-aksi-rpp" onclick="handleAksi('RPP')" class="w-full h-14 rounded-xl bg-indigo-50 text-indigo-700 font-bold border border-indigo-200 hover:bg-indigo-100 flex items-center justify-center gap-2">
+        <span class="material-symbols-outlined">description</span> Memuat...
+      </button>
+      
+      <button id="btn-aksi-lkpd" onclick="handleAksi('LKPD')" class="w-full h-14 rounded-xl bg-emerald-50 text-emerald-700 font-bold border border-emerald-200 hover:bg-emerald-100 flex items-center justify-center gap-2">
+        <span class="material-symbols-outlined">assignment</span> Memuat...
+      </button>
+      
+      <button id="btn-aksi-game" onclick="handleAksi('GAME')" class="w-full h-14 rounded-xl bg-purple-50 text-purple-700 font-bold border border-purple-200 hover:bg-purple-100 flex items-center justify-center gap-2">
+        <span class="material-symbols-outlined">sports_esports</span> Memuat...
+      </button>
+    </div>
+    
+    <div class="mt-6 pt-4 border-t border-border flex justify-between items-center">
+      <button onclick="hapusData(selectedId)" class="text-sm text-red-500 hover:text-red-700 font-semibold">Hapus Topik</button>
+      <button onclick="App.closeModal('modal-aksi')" class="text-sm text-gray-500 hover:text-gray-800 font-semibold">Tutup</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL PROMPT MANUAL -->
+<div id="modal-prompt" class="hidden fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+  <div class="bg-white rounded-2xl shadow-xl w-full max-w-2xl fade-in max-h-[90vh] flex flex-col">
+    <div class="p-4 border-b border-border flex justify-between items-center bg-indigo-50">
+      <h2 class="text-lg font-bold text-indigo-900" id="prompt-modal-title">Generate AI</h2>
+      <button onclick="App.closeModal('modal-prompt')" class="w-8 h-8 rounded-lg hover:bg-indigo-100 flex items-center justify-center"><span class="material-symbols-outlined">close</span></button>
+    </div>
+    <div class="p-6 overflow-y-auto space-y-4">
+      <div class="bg-blue-50 text-blue-800 p-3 rounded-lg text-sm">
+        <b>Langkah 1:</b> Klik <b>Copy Prompt</b>.<br>
+        <b>Langkah 2:</b> Paste ke ChatGPT/Gemini/DeepSeek.<br>
+        <b>Langkah 3:</b> Copy hasilnya, paste ke kotak bawah, klik <b>Simpan Hasil</b>.
+      </div>
+      <div>
+        <label class="block text-sm font-semibold mb-1.5">1. Prompt untuk AI</label>
+        <textarea id="prompt-text" class="w-full h-32 px-3 py-2 rounded-lg border border-border text-sm font-mono bg-gray-50" readonly></textarea>
+        <button onclick="copyPrompt()" class="mt-2 h-9 px-4 rounded-lg bg-gray-800 text-white font-bold text-sm flex items-center gap-2">
+          <span class="material-symbols-outlined text-[18px]">content_copy</span> Copy Prompt
+        </button>
+      </div>
+      <div>
+        <label class="block text-sm font-semibold mb-1.5">2. Paste Hasil AI</label>
+        <textarea id="ai-result" class="w-full h-40 px-3 py-2 rounded-lg border border-border text-sm" placeholder="Paste di sini..."></textarea>
+      </div>
+      <div id="prompt-error" class="hidden p-3 rounded-lg bg-red-50 text-sm text-danger"></div>
+    </div>
+    <div class="p-4 border-t border-border flex justify-between items-center bg-white gap-2">
+      <button onclick="App.closeModal('modal-prompt')" class="h-10 px-6 rounded-lg border text-gray-700 font-semibold">Batal</button>
+      
+      <div class="flex gap-2">
+        <button onclick="testGamePreview()" id="btn-test-game" class="hidden h-10 px-6 rounded-lg bg-amber-500 text-white font-semibold hover:bg-amber-600 flex items-center gap-2">
+          <span class="material-symbols-outlined text-[18px]">play_circle</span> Uji Coba Game
+        </button>
+        
+        <button onclick="saveAiResult()" id="btn-save-ai" class="h-10 px-6 rounded-lg bg-primary text-white font-semibold">Simpan Hasil</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL VIEW HASIL (MODAL LAMA DIPERTAHANKAN) -->
+<div id="modal-view" class="hidden fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+  <div class="bg-white rounded-2xl shadow-xl w-full max-w-4xl fade-in max-h-[95vh] flex flex-col">
+    <div class="p-4 border-b border-border flex justify-between items-center bg-white">
+      <h2 class="text-lg font-bold" id="view-title">Hasil AI</h2>
+      <button onclick="App.closeModal('modal-view')" class="w-8 h-8 rounded-lg hover:bg-gray-100 flex items-center justify-center"><span class="material-symbols-outlined">close</span></button>
+    </div>
+    <div class="overflow-y-auto p-6 bg-gray-50">
+      <div id="view-content-markdown" class="bg-white p-8 rounded-xl shadow-sm hidden text-gray-800"></div>
+      <div id="view-content-game" class="hidden w-full flex flex-col items-center">
+        <div class="w-full max-w-3xl bg-gray-900 rounded-xl overflow-hidden shadow-lg border-4 border-gray-700">
+          <iframe id="game-iframe" class="w-full h-[600px] bg-white" sandbox="allow-scripts allow-same-origin allow-forms"></iframe>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+let listMapel = [];
+let listKelas = [];
+let listData = [];
+let selectedId = '';
+let selectedType = '';
+let currentPromptId = '';
+let currentPromptType = '';
+let selectedData = null;
+
+// 1. INISIALISASI AWAL
+async function init() {
+  try {
+    const [resMapel, resKelas] = await Promise.all([
+      App.callApi('apiReadAll', App.getToken(), 'master_mapel'),
+      App.callApi('apiGetGuruClasses', App.getToken())
+    ]);
+    listMapel = resMapel.data || [];
+    listKelas = resKelas.data || [];
+    
+    document.getElementById('f-mapel').innerHTML = '<option value="">-- Pilih Mapel --</option>' + listMapel.map(m => `<option value="${m.mapel_id}">${m.nama_mapel}</option>`).join('');
+    document.getElementById('f-kelas').innerHTML = '<option value="">-- Pilih Kelas --</option>' + listKelas.map(k => `<option value="${k.kelas_id}">${k.nama_kelas}</option>`).join('');
+    
+    loadData();
+  } catch (e) {
+    App.toast('Gagal memuat data referensi', 'error');
+  }
+}
+
+// 2. LOAD DATA (TAMPILAN KARTU INFORMATIF)
+async function loadData() {
+  const grid = document.getElementById('grid-container');
+  grid.innerHTML = '<div class="col-span-full text-center py-10 text-gray-500">Memuat data...</div>';
+  
+  try {
+    const res = await App.callApi('apiGetPerangkat', App.getToken());
+    listData = res.data || [];
+    
+    if (listData.length === 0) {
+      return grid.innerHTML = `<div class="col-span-full text-center py-10">Belum ada materi. Klik "Topik Baru" untuk memulai.</div>`;
+    }
+
+    grid.innerHTML = listData.map(d => {
+      const hasRpp = d.konten_ai && d.konten_ai.trim() !== '';
+      const hasLkpd = d.konten_lkpd && d.konten_lkpd.trim() !== '';
+      const hasGame = d.konten_game && d.konten_game.trim() !== '';
+      
+      const isPrivate = d.status_akses === 'PRIVATE';
+
+      // Tentukan warna border card (jika sudah ada isi, beri border biru)
+      const cardBorder = (hasRpp || hasLkpd || hasGame) ? 'border-primary-200' : 'border-border';
+
+      return `
+      <div class="bg-white rounded-2xl border ${cardBorder} p-5 shadow-sm hover:shadow-md transition-all cursor-pointer flex flex-col justify-between group" onclick="openAksi('${d.perangkat_id}')">
+        
+        <div>
+          <!-- Top Bar: Mapel & Kelas -->
+          <div class="flex justify-between items-start mb-3">
+            <div class="flex flex-wrap gap-1.5">
+              <span class="px-2 py-0.5 bg-blue-50 text-blue-700 text-[10px] font-bold rounded-md border border-blue-100">${App.escapeHtml(d.nama_mapel)}</span>
+              <span class="px-2 py-0.5 bg-emerald-50 text-emerald-700 text-[10px] font-bold rounded-md border border-emerald-100">${App.escapeHtml(d.nama_kelas)}</span>
+            </div>
+            <span class="text-[10px] font-bold text-gray-400 flex items-center gap-0.5">
+              <span class="material-symbols-outlined text-[12px]">${isPrivate ? 'lock' : 'public'}</span> ${isPrivate ? 'Private' : 'Public'}
+            </span>
+          </div>
+          
+          <!-- Judul & Deskripsi -->
+          <h3 class="text-lg font-bold text-gray-800 line-clamp-2 leading-tight group-hover:text-primary transition-colors">${App.escapeHtml(d.judul)}</h3>
+          <p class="text-xs text-gray-500 line-clamp-2 mt-1 mb-4">${App.escapeHtml(d.deskripsi)}</p>
+        </div>
+        
+        <div>
+          <!-- Indikator Kelengkapan -->
+          <div class="flex items-center gap-3 mb-4 p-2 bg-gray-50 rounded-lg border border-gray-100">
+            <div class="flex items-center gap-1 text-[11px] font-bold ${hasRpp ? 'text-indigo-600' : 'text-gray-300'}">
+              <span class="material-symbols-outlined text-[16px]">${hasRpp ? 'check_circle' : 'radio_button_unchecked'}</span> RPP
+            </div>
+            <div class="flex items-center gap-1 text-[11px] font-bold ${hasLkpd ? 'text-emerald-600' : 'text-gray-300'}">
+              <span class="material-symbols-outlined text-[16px]">${hasLkpd ? 'check_circle' : 'radio_button_unchecked'}</span> LKPD
+            </div>
+            <div class="flex items-center gap-1 text-[11px] font-bold ${hasGame ? 'text-purple-600' : 'text-gray-300'}">
+              <span class="material-symbols-outlined text-[16px]">${hasGame ? 'check_circle' : 'radio_button_unchecked'}</span> Game
+            </div>
+          </div>
+          
+          <!-- Tombol Aksi -->
+          <button class="w-full h-10 rounded-lg bg-gray-50 hover:bg-gray-100 text-gray-700 font-bold text-sm border border-gray-200 flex items-center justify-center gap-2 transition-colors">
+            <span class="material-symbols-outlined text-[18px]">folder_open</span> Kelola Perangkat
+          </button>
+        </div>
+        
+      </div>
+      `;
+    }).join('');
+  } catch (e) {
+    grid.innerHTML = `<div class="col-span-full text-center py-10 text-red-500">${e.message}</div>`;
+  }
+}
+
+// 3. FUNGSI CRUD DASAR
+function openFormModal() {
+  document.getElementById('form-data').reset();
+  document.getElementById('f-id').value = '';
+  document.getElementById('form-error').classList.add('hidden');
+  App.openModal('modal-form');
+}
+
+async function handleSave(e) {
+  e.preventDefault();
+  const btn = e.target.querySelector('button[type="submit"]'); 
+  btn.disabled = true; btn.textContent = 'Menyimpan...';
+  
+  const payload = Object.fromEntries(new FormData(e.target).entries());
+  payload.kategori = 'ATP'; 
+  
+  try {
+    await App.callApi('apiSavePerangkat', App.getToken(), payload);
+    App.closeModal('modal-form'); 
+    App.toast('Topik berhasil ditambahkan', 'success'); 
+    loadData();
+  } catch (err) {
+    document.getElementById('form-error').textContent = err.message; 
+    document.getElementById('form-error').classList.remove('hidden');
+  } finally { 
+    btn.disabled = false; btn.textContent = 'Simpan Topik'; 
+  }
+}
+
+async function hapusData(id) {
+  if (!confirm('Apakah Anda yakin ingin menghapus Topik ini beserta seluruh file RPP, LKPD, dan Game-nya?')) return;
+  
+  App.showLoading('Menghapus data...');
+  try { 
+    await App.callApi('apiDeletePerangkat', App.getToken(), id); 
+    App.hideLoading();
+    App.closeModal('modal-aksi'); 
+    App.toast('Topik berhasil dihapus', 'success'); 
+    loadData(); 
+  } catch (err) { 
+    App.hideLoading();
+    App.toast(err.message, 'error'); 
+  }
+}
+
+// 4. FUNGSI MODAL AKSI (RPP/LKPD/GAME)
+function openAksi(id) {
+  selectedId = id;
+  selectedData = listData.find(d => d.perangkat_id === id);
+  if (!selectedData) return;
+
+  document.getElementById('aksi-title').textContent = selectedData.judul;
+
+  const btnRpp = document.getElementById('btn-aksi-rpp');
+  if (selectedData.konten_ai && selectedData.konten_ai.trim() !== '') {
+    btnRpp.innerHTML = `<span class="material-symbols-outlined">visibility</span> Lihat Modul RPP`;
+    btnRpp.className = 'w-full h-14 rounded-xl bg-indigo-600 text-white font-bold hover:bg-indigo-700 flex items-center justify-center gap-2 shadow-md';
+  } else {
+    btnRpp.innerHTML = `<span class="material-symbols-outlined">add_circle</span> Buat Modul RPP`;
+    btnRpp.className = 'w-full h-14 rounded-xl bg-indigo-50 text-indigo-700 font-bold border border-indigo-200 hover:bg-indigo-100 flex items-center justify-center gap-2';
+  }
+
+  const btnLkpd = document.getElementById('btn-aksi-lkpd');
+  if (selectedData.konten_lkpd && selectedData.konten_lkpd.trim() !== '') {
+    btnLkpd.innerHTML = `<span class="material-symbols-outlined">visibility</span> Lihat LKPD`;
+    btnLkpd.className = 'w-full h-14 rounded-xl bg-emerald-600 text-white font-bold hover:bg-emerald-700 flex items-center justify-center gap-2 shadow-md';
+  } else {
+    btnLkpd.innerHTML = `<span class="material-symbols-outlined">add_circle</span> Buat LKPD`;
+    btnLkpd.className = 'w-full h-14 rounded-xl bg-emerald-50 text-emerald-700 font-bold border border-emerald-200 hover:bg-emerald-100 flex items-center justify-center gap-2';
+  }
+
+  const btnGame = document.getElementById('btn-aksi-game');
+  if (selectedData.konten_game && selectedData.konten_game.trim() !== '') {
+    btnGame.innerHTML = `<span class="material-symbols-outlined">play_circle</span> Mainkan Game HTML`;
+    btnGame.className = 'w-full h-14 rounded-xl bg-purple-600 text-white font-bold hover:bg-purple-700 flex items-center justify-center gap-2 shadow-md';
+  } else {
+    btnGame.innerHTML = `<span class="material-symbols-outlined">add_circle</span> Buat Game HTML`;
+    btnGame.className = 'w-full h-14 rounded-xl bg-purple-50 text-purple-700 font-bold border border-purple-200 hover:bg-purple-100 flex items-center justify-center gap-2';
+  }
+
+  App.openModal('modal-aksi');
+}
+
+function handleAksi(tipe) {
+  App.closeModal('modal-aksi');
+  
+  if (tipe === 'RPP') {
+    if (selectedData.konten_ai && selectedData.konten_ai.trim() !== '') viewContent('RPP');
+    else openPromptModal('RPP');
+  } 
+  else if (tipe === 'LKPD') {
+    if (selectedData.konten_lkpd && selectedData.konten_lkpd.trim() !== '') viewContent('LKPD');
+    else openPromptModal('LKPD');
+  } 
+  else if (tipe === 'GAME') {
+    if (selectedData.konten_game && selectedData.konten_game.trim() !== '') viewContent('GAME');
+    else openPromptModal('GAME');
+  }
+}
+
+async function viewContent(tipe) {
+  const viewTitle = document.getElementById('view-title');
+  const contentMd = document.getElementById('view-content-markdown');
+  const contentGame = document.getElementById('view-content-game');
+  const gameIframe = document.getElementById('game-iframe');
+
+  viewTitle.textContent = 'Memuat...';
+  contentMd.classList.add('hidden');
+  contentGame.classList.add('hidden');
+  App.openModal('modal-view');
+  App.showLoading('Mengambil file dari Google Drive...');
+
+  try {
+    let fileId = '';
+    if (tipe === 'RPP') fileId = selectedData.konten_ai;
+    if (tipe === 'LKPD') fileId = selectedData.konten_lkpd;
+    if (tipe === 'GAME') fileId = selectedData.konten_game;
+
+    if (!fileId || fileId.trim() === '') throw new Error('File tidak ditemukan.');
+
+    const res = await App.callApi('apiGetFileContent', App.getToken(), fileId);
+    const fileText = res.data.content;
+    App.hideLoading();
+
+    if (tipe === 'RPP' || tipe === 'LKPD') {
+      viewTitle.textContent = tipe === 'RPP' ? 'Preview Modul RPP' : 'Preview LKPD';
+      contentMd.classList.remove('hidden');
+      contentMd.innerHTML = marked.parse(fileText);
+    } 
+    else if (tipe === 'GAME') {
+      viewTitle.textContent = 'Mainkan Game HTML';
+      contentGame.classList.remove('hidden');
+      
+      let cleanHtml = fileText.replace(/```html/g, '').replace(/```/g, '');
+      const blob = new Blob([cleanHtml], { type: 'text/html' });
+      const blobUrl = URL.createObjectURL(blob);
+      
+      if (gameIframe.src && gameIframe.src.startsWith('blob:')) URL.revokeObjectURL(gameIframe.src);
+      gameIframe.src = blobUrl;
+    }
+  } catch (err) {
+    App.hideLoading();
+    viewTitle.textContent = 'Error';
+    contentMd.classList.remove('hidden');
+    contentMd.innerHTML = `<p class="text-red-500 font-bold">${err.message}</p>`;
+  }
+}
+
+// 5. FUNGSI PROMPT AI
+async function openPromptModal(tipe) {
+  App.closeModal('modal-aksi');
+  selectedType = tipe;
+  currentPromptId = selectedId;
+  currentPromptType = tipe;
+
+  document.getElementById('prompt-modal-title').textContent = 'Generate ' + tipe;
+  document.getElementById('prompt-text').value = 'Memuat prompt...';
+  document.getElementById('ai-result').value = '';
+  document.getElementById('prompt-error').classList.add('hidden');
+  
+  const btnTest = document.getElementById('btn-test-game');
+  if (tipe === 'GAME') btnTest.classList.remove('hidden');
+  else btnTest.classList.add('hidden');
+
+  App.openModal('modal-prompt');
+
+  try {
+    const res = await App.callApi('apiGetAIPrompt', App.getToken(), selectedId, tipe);
+    document.getElementById('prompt-text').value = res.data.promptText;
+  } catch (err) {
+    document.getElementById('prompt-text').value = 'Gagal memuat prompt: ' + err.message;
+  }
+}
+
+function copyPrompt() {
+  const textarea = document.getElementById('prompt-text');
+  textarea.select();
+  document.execCommand('copy');
+  App.toast('Prompt berhasil di-copy!', 'success');
+}
+
+async function saveAiResult() {
+  const resultText = document.getElementById('ai-result').value.trim();
+  if (!resultText) return App.toast('Kotak hasil AI masih kosong', 'warning');
+
+  const btn = document.getElementById('btn-save-ai');
+  btn.disabled = true; btn.textContent = 'Menyimpan...';
+
+  try {
+    await App.callApi('apiSaveAIResult', App.getToken(), currentPromptId, currentPromptType, resultText);
+    App.closeModal('modal-prompt');
+    App.toast(`Hasil ${currentPromptType} berhasil disimpan!`, 'success');
+    loadData(); 
+  } catch (err) {
+    document.getElementById('prompt-error').textContent = err.message;
+    document.getElementById('prompt-error').classList.remove('hidden');
+  } finally {
+    btn.disabled = false; btn.textContent = 'Simpan Hasil';
+  }
+}
+
+function testGamePreview() {
+  const rawText = document.getElementById('ai-result').value.trim();
+  if (!rawText) return App.toast('Kotak hasil AI masih kosong.', 'warning');
+
+  let cleanHtml = rawText.replace(/```html/g, '').replace(/```/g, '');
+  const gameIframe = document.getElementById('game-iframe');
+  const viewTitle = document.getElementById('view-title');
+  const contentMd = document.getElementById('view-content-markdown');
+  const contentGame = document.getElementById('view-content-game');
+
+  viewTitle.textContent = 'Uji Coba Game (Preview Sebelum Disimpan)';
+  contentMd.classList.add('hidden');
+  contentGame.classList.remove('hidden');
+
+  const blob = new Blob([cleanHtml], { type: 'text/html' });
+  const blobUrl = URL.createObjectURL(blob);
+  if (gameIframe.src && gameIframe.src.startsWith('blob:')) URL.revokeObjectURL(gameIframe.src);
+  gameIframe.src = blobUrl;
+
+  App.openModal('modal-view');
+}
+
+document.addEventListener('DOMContentLoaded', init);
+</script>

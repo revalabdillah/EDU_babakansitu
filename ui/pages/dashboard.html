@@ -1,0 +1,307 @@
+<div class="space-y-6">
+  <!-- Welcome & TA Badge -->
+  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+    <div>
+      <h1 class="text-2xl font-bold">Selamat datang, <?= user && user.name ? user.name.split(' ')[0] : 'User' ?> 👋</h1>
+      <p class="text-sm text-text-muted mt-1">
+        <? if (user && user.role === 'ADMIN') { ?>Kelola data sekolah & pengguna sistem.
+        <? } else if (user && user.role === 'GURU') { ?>Berikut adalah ringkasan aktivitas mengajar Anda.
+        <? } else if (user && user.role === 'KEPALA_SEKOLAH') { ?>Pantau kinerja & pemanfaatan sarana.
+        <? } ?>
+      </p>
+    </div>
+    
+    <!-- TA Badge (Guru & Kepsek) -->
+    <? if (user && (user.role === 'GURU' || user.role === 'KEPALA_SEKOLAH')) { ?>
+    <div id="active-ta-container" class="hidden">
+      <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-200 font-semibold text-sm shadow-sm">
+        <span class="material-symbols-outlined text-[16px]">calendar_month</span>
+        <span id="active-ta-text">Memuat...</span>
+      </span>
+    </div>
+    <? } ?>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- DASHBOARD GURU                             -->
+  <!-- ========================================== -->
+  <? if (user && user.role === 'GURU') { ?>
+  <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+    <div class="bg-white rounded-xl border border-border p-4">
+      <div class="w-10 h-10 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center mb-3">
+        <span class="material-symbols-outlined text-[22px]">school</span>
+      </div>
+      <div class="text-2xl font-bold" id="guru-kpi-siswa">—</div>
+      <div class="text-xs text-text-muted mt-1">Total Siswa Diampu</div>
+    </div>
+    <div class="bg-white rounded-xl border border-border p-4">
+      <div class="w-10 h-10 rounded-lg bg-teal-100 text-teal-700 flex items-center justify-center mb-3">
+        <span class="material-symbols-outlined text-[22px]">event</span>
+      </div>
+      <div class="text-2xl font-bold" id="guru-kpi-jadwal">—</div>
+      <div class="text-xs text-text-muted mt-1">Sesi KBM Hari Ini</div>
+    </div>
+    <div class="bg-white rounded-xl border border-border p-4">
+      <div class="w-10 h-10 rounded-lg bg-amber-100 text-amber-700 flex items-center justify-center mb-3">
+        <span class="material-symbols-outlined text-[22px]">menu_book</span>
+      </div>
+      <div class="text-2xl font-bold" id="guru-kpi-draf">—</div>
+      <div class="text-xs text-text-muted mt-1">Materi Perlu Disiapkan</div>
+    </div>
+    <div class="bg-white rounded-xl border border-border p-4">
+      <div class="w-10 h-10 rounded-lg bg-indigo-100 text-indigo-700 flex items-center justify-center mb-3">
+        <span class="material-symbols-outlined text-[22px]">comment</span>
+      </div>
+      <div class="text-2xl font-bold" id="guru-kpi-supervisi">—</div>
+      <div class="text-xs text-text-muted mt-1">Catatan Supervisi</div>
+    </div>
+  </div>
+
+  <div class="bg-white rounded-xl border border-border p-6 mt-6">
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="text-lg font-bold flex items-center gap-2">
+        <span class="material-symbols-outlined text-primary">today</span> Agenda KBM Hari Ini
+      </h2>
+      <button onclick="window.location.href='?page=pelaksanaan-kbm'" class="text-sm text-primary font-semibold hover:underline">Lihat Semua</button>
+    </div>
+    <div id="guru-jadwal-container" class="space-y-3">
+      <div class="text-sm text-text-muted">Memuat jadwal...</div>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+    <div class="bg-white rounded-xl border border-border p-6">
+      <h2 class="text-lg font-bold mb-4">Aksi Cepat</h2>
+      <div class="grid grid-cols-2 gap-3">
+        <a href="?page=presensi" class="flex flex-col items-center justify-center p-4 rounded-xl border border-border hover:bg-primary-50 hover:border-primary transition-colors text-center group">
+          <span class="material-symbols-outlined text-[32px] text-primary mb-2 group-hover:scale-110 transition-transform">how_to_reg</span>
+          <span class="text-sm font-semibold">Isi Presensi</span>
+        </a>
+        <a href="?page=perangkat-ajar" class="flex flex-col items-center justify-center p-4 rounded-xl border border-border hover:bg-primary-50 hover:border-primary transition-colors text-center group">
+          <span class="material-symbols-outlined text-[32px] text-primary mb-2 group-hover:scale-110 transition-transform">auto_stories</span>
+          <span class="text-sm font-semibold">Perangkat Ajar</span>
+        </a>
+        <a href="?page=reservasi" class="flex flex-col items-center justify-center p-4 rounded-xl border border-border hover:bg-primary-50 hover:border-primary transition-colors text-center group">
+          <span class="material-symbols-outlined text-[32px] text-primary mb-2 group-hover:scale-110 transition-transform">cast_for_education</span>
+          <span class="text-sm font-semibold">Reservasi Lab</span>
+        </a>
+        <a href="?page=penilaian" class="flex flex-col items-center justify-center p-4 rounded-xl border border-border hover:bg-primary-50 hover:border-primary transition-colors text-center group">
+          <span class="material-symbols-outlined text-[32px] text-primary mb-2 group-hover:scale-110 transition-transform">grade</span>
+          <span class="text-sm font-semibold">Input Nilai</span>
+        </a>
+      </div>
+    </div>
+
+    <div class="bg-white rounded-xl border border-border p-6">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="text-lg font-bold">Catatan Terbaru</h2>
+        <a href="?page=catatan-supervisi" class="text-sm text-primary font-semibold hover:underline">Semua</a>
+      </div>
+      <div id="guru-supervisi-container" class="space-y-3">
+        <div class="text-sm text-text-muted">Memuat catatan...</div>
+      </div>
+    </div>
+  </div>
+  <? } ?>
+
+  <!-- ========================================== -->
+  <!-- DASHBOARD ADMIN                            -->
+  <!-- ========================================== -->
+  <? if (user && user.role === 'ADMIN') { ?>
+  <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+    <div class="bg-white rounded-xl border border-border p-4">
+      <div class="w-10 h-10 rounded-lg bg-violet-100 text-violet-700 flex items-center justify-center mb-3"><span class="material-symbols-outlined text-[22px]">group</span></div>
+      <div class="text-3xl font-bold" id="kpi-guru">—</div>
+      <div class="text-xs text-text-muted mt-1">Total Guru</div>
+    </div>
+    <div class="bg-white rounded-xl border border-border p-4">
+      <div class="w-10 h-10 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center mb-3"><span class="material-symbols-outlined text-[22px]">school</span></div>
+      <div class="text-3xl font-bold" id="kpi-siswa">—</div>
+      <div class="text-xs text-text-muted mt-1">Total Siswa</div>
+    </div>
+    <div class="bg-white rounded-xl border border-border p-4">
+      <div class="w-10 h-10 rounded-lg bg-teal-100 text-teal-700 flex items-center justify-center mb-3"><span class="material-symbols-outlined text-[22px]">tv_gen</span></div>
+      <div class="text-3xl font-bold" id="kpi-papan">—</div>
+      <div class="text-xs text-text-muted mt-1">Papan Aktif</div>
+    </div>
+    <div class="bg-white rounded-xl border border-border p-4">
+      <div class="w-10 h-10 rounded-lg bg-amber-100 text-amber-700 flex items-center justify-center mb-3"><span class="material-symbols-outlined text-[22px]">event</span></div>
+      <div class="text-3xl font-bold" id="kpi-reservasi">—</div>
+      <div class="text-xs text-text-muted mt-1">Reservasi Hari Ini</div>
+    </div>
+  </div>
+  <div class="bg-white rounded-xl border border-border p-6 mt-6">
+    <h2 class="text-lg font-bold mb-4">Reservasi Terbaru</h2>
+    <div id="recent-activity" class="flex flex-col items-center justify-center py-8 text-center">
+      <div class="skeleton h-4 w-3/4 mb-2"></div>
+      <div class="skeleton h-4 w-1/2"></div>
+    </div>
+  </div>
+  <? } ?>
+
+  <!-- ========================================== -->
+  <!-- DASHBOARD KEPALA SEKOLAH                   -->
+  <!-- ========================================== -->
+  <? if (user && user.role === 'KEPALA_SEKOLAH') { ?>
+  <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+    <div class="bg-white rounded-xl border border-border p-4"><div class="text-2xl font-bold">—</div><div class="text-xs">Kehadiran</div></div>
+    <div class="bg-white rounded-xl border border-border p-4"><div class="text-2xl font-bold">—</div><div class="text-xs">Perangkat Terbit</div></div>
+    <div class="bg-white rounded-xl border border-border p-4"><div class="text-2xl font-bold">—</div><div class="text-xs">Utilisasi Board</div></div>
+    <div class="bg-white rounded-xl border border-border p-4"><div class="text-2xl font-bold">—</div><div class="text-xs">Catatan Bulan Ini</div></div>
+  </div>
+  <? } ?>
+
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  
+  const userRole = window.__USER__.role;
+
+  // ==========================================
+  // ROUTING BERDASARKAN ROLE
+  // ==========================================
+  if (userRole === 'GURU') {
+    loadGuruDashboard();
+  } else if (userRole === 'ADMIN') {
+    loadAdminDashboard();
+  }
+
+  // ==========================================
+  // FUNGSI DASHBOARD GURU
+  // ==========================================
+  async function loadGuruDashboard() {
+    // 1. Tampilkan Tahun Ajaran
+    try {
+      const resTA = await App.callApi('apiGetActiveTahunAjaran', App.getToken());
+      if (resTA.success && resTA.data) {
+        const taContainer = document.getElementById('active-ta-container');
+        if(taContainer) taContainer.classList.remove('hidden');
+        const taText = document.getElementById('active-ta-text');
+        if(taText) taText.textContent = `TA: ${resTA.data.nama_tahun_ajaran} · ${resTA.data.semester_aktif}`;
+      }
+    } catch(e) { console.error('Gagal load TA:', e); }
+
+    // 2. Tampilkan KPI Siswa
+    try {
+      const resSiswa = await App.callApi('apiGetMyStudents', App.getToken());
+      const el = document.getElementById('guru-kpi-siswa');
+      if(el) el.textContent = (resSiswa.data || []).length;
+    } catch(e) { }
+
+    // 3. Tampilkan KPI & Agenda KBM
+    try {
+      const today = new Date();
+      const dateStr = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+      const resJadwal = await App.callApi('apiGetJadwalKbm', App.getToken(), dateStr);
+      
+      const jadwalList = resJadwal.data || [];
+      const kpiEl = document.getElementById('guru-kpi-jadwal');
+      if(kpiEl) kpiEl.textContent = jadwalList.length;
+      
+      const jadwalContainer = document.getElementById('guru-jadwal-container');
+      if(jadwalContainer) {
+        if (jadwalList.length === 0) {
+          jadwalContainer.innerHTML = `<div class="p-4 bg-gray-50 text-center rounded-lg text-text-muted text-sm border border-dashed">Tidak ada jadwal KBM hari ini.</div>`;
+        } else {
+          jadwalContainer.innerHTML = jadwalList.map(j => {
+            let statusBadge = j.is_ready 
+              ? `<span class="bg-green-100 text-green-700 text-[10px] px-2 py-0.5 rounded-full font-bold ml-2">Siap</span>` 
+              : `<span class="bg-amber-100 text-amber-700 text-[10px] px-2 py-0.5 rounded-full font-bold ml-2">Belum Disiapkan</span>`;
+              
+            return `
+            <div class="flex items-center justify-between p-3 rounded-lg border border-border bg-white hover:bg-gray-50 transition-colors">
+              <div class="flex items-center gap-3">
+                <div class="w-14 h-12 rounded-lg bg-primary-50 text-primary flex flex-col items-center justify-center font-bold text-xs leading-tight">
+                  <span>${j.jam_mulai}</span>
+                  <span class="text-[9px] opacity-70">s/d</span>
+                  <span>${j.jam_selesai}</span>
+                </div>
+                <div>
+                  <div class="font-bold text-gray-800 flex items-center">${App.escapeHtml(j.nama_kelas)} ${statusBadge}</div>
+                  <div class="text-xs text-text-muted mt-0.5"><span class="material-symbols-outlined text-[12px] align-middle">tv_gen</span> ${App.escapeHtml(j.nama_papan)}</div>
+                </div>
+              </div>
+              <a href="?page=pelaksanaan-kbm" class="h-8 px-3 rounded-lg bg-primary-50 text-primary text-xs font-bold flex items-center justify-center hover:bg-primary-100 transition-colors">Kelola</a>
+            </div>`;
+          }).join('');
+        }
+      }
+    } catch(e) { }
+
+    // 4. Tampilkan KPI Perangkat Ajar
+    try {
+      const resPerangkat = await App.callApi('apiGetPerangkatForKbm', App.getToken());
+      const draf = (resPerangkat.data || []).filter(p => !p.has_game);
+      const el = document.getElementById('guru-kpi-draf');
+      if(el) el.textContent = draf.length;
+    } catch(e) { }
+
+    // 5. Tampilkan KPI & List Catatan Supervisi
+    try {
+      const resSupervisi = await App.callApi('apiGetSupervisi', App.getToken());
+      const supervisiList = resSupervisi.data || [];
+      const kpiEl = document.getElementById('guru-kpi-supervisi');
+      if(kpiEl) kpiEl.textContent = supervisiList.length;
+      
+      const container = document.getElementById('guru-supervisi-container');
+      if(container) {
+        if (supervisiList.length === 0) {
+          container.innerHTML = `<div class="p-4 bg-gray-50 text-center rounded-lg text-text-muted text-sm border border-dashed">Belum ada catatan supervisi.</div>`;
+        } else {
+          container.innerHTML = supervisiList.slice(0, 3).map(s => `
+            <div class="p-3 rounded-lg bg-indigo-50 border-l-4 border-indigo-500">
+              <p class="text-sm text-gray-700 line-clamp-2 italic">"${App.escapeHtml(s.catatan)}"</p>
+              <div class="text-[10px] text-indigo-600 mt-1 font-semibold">${App.formatDate(s.tanggal)}</div>
+            </div>
+          `).join('');
+        }
+      }
+    } catch(e) { }
+  }
+
+  // ==========================================
+  // FUNGSI DASHBOARD ADMIN
+  // ==========================================
+  async function loadAdminDashboard() {
+    try {
+      const res = await App.callApi('apiGetAdminDashboard', App.getToken());
+      const data = res.data;
+      
+      const kpiGuru = document.getElementById('kpi-guru');
+      if(kpiGuru) kpiGuru.textContent = data.stats.totalGuru;
+      const kpiSiswa = document.getElementById('kpi-siswa');
+      if(kpiSiswa) kpiSiswa.textContent = data.stats.totalSiswa;
+      const kpiPapan = document.getElementById('kpi-papan');
+      if(kpiPapan) kpiPapan.textContent = data.stats.papanAktif;
+      const kpiReservasi = document.getElementById('kpi-reservasi');
+      if(kpiReservasi) kpiReservasi.textContent = data.stats.reservasiHariIni;
+      
+      const recentContainer = document.getElementById('recent-activity');
+      if (recentContainer && data.recent && data.recent.length > 0) {
+        recentContainer.className = 'space-y-4';
+        recentContainer.innerHTML = data.recent.map(r => `
+          <div class="flex items-center justify-between p-3 rounded-lg bg-bg-page border border-border">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-full bg-primary-50 text-primary flex items-center justify-center">
+                <span class="material-symbols-outlined text-[20px]">event_available</span>
+              </div>
+              <div>
+                <div class="font-semibold text-sm">Reservasi Smartboard</div>
+                <div class="text-xs text-text-muted">${App.formatDate(r.tanggal_pinjam)} · ${App.formatTime(r.jam_mulai)} - ${App.formatTime(r.jam_selesai)}</div>
+              </div>
+            </div>
+            <div class="text-right">
+              <div class="text-xs font-mono text-text-muted">${App.escapeHtml(r.papan_id)}</div>
+              <span class="inline-block mt-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-green-100 text-green-700">${r.status_reservasi}</span>
+            </div>
+          </div>
+        `).join('');
+      }
+    } catch (err) {
+      console.error('Gagal load dashboard admin:', err);
+    }
+  }
+
+});
+</script>
